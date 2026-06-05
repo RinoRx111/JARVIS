@@ -97,6 +97,16 @@ def route_llm(task_type: Optional[str] = None, temperature: float = 0.7) -> Base
     if openai:
         return openai
 
+    # Fall back to Gemini if available
+    gemini = get_gemini_client(temperature)
+    if gemini:
+        return gemini
+
+    # Fall back to Claude if available
+    claude = get_claude_client(temperature)
+    if claude:
+        return claude
+
     # 3. Local model fallback
     logger.info("No cloud credentials found. Routing to local Ollama runtime.")
     return get_ollama_client(temperature)
