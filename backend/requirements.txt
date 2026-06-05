@@ -1,0 +1,52 @@
+# --- CORE WEB SERVER ---
+fastapi==0.111.0
+uvicorn==0.30.1
+pydantic==2.7.4
+pydantic-settings==2.3.1
+python-multipart==0.0.9
+email-validator==2.1.1
+
+# --- DATABASE & PERSISTENCE ---
+SQLAlchemy==2.0.30
+psycopg2-binary==2.9.9
+alembic==1.13.1
+chromadb==0.5.0
+sqlmodel==0.0.19
+
+# --- SECURITY & AUTHENTICATION ---
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+bcrypt==4.1.3
+cryptography==42.0.8
+
+# --- AI, LLM & AGENT ORCHESTRATION ---
+openai==1.30.5
+google-generativeai==0.5.4
+anthropic==0.28.0
+langchain==0.2.1
+langchain-core==0.2.3
+langchain-openai==0.1.8
+langchain-google-genai==1.0.6
+langchain-anthropic==0.1.15
+langchain-community==0.2.1
+langgraph==0.0.65
+
+# --- BROWSER AUTOMATION & WEB SCRAPING ---
+playwright==1.44.0
+beautifulsoup4==4.12.3
+lxml==5.2.2
+
+# --- DOCUMENT PARSING ---
+pypdf==4.2.0
+python-docx==1.1.2
+pandas==2.2.2
+
+# --- VOICE & UTILITIES ---
+soundfile==0.12.1
+websockets==12.0
+httpx==0.27.0
+python-dotenv==1.0.1
+python-dateutil==2.9.0.post0
+docker==7.1.0
+pytest==8.2.1
+pytest-asyncio==0.23.7
