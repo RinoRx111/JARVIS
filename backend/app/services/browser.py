@@ -11,7 +11,7 @@ class BrowserService:
     def __init__(self):
         self.headless = settings.PLAYWRIGHT_HEADLESS
         self.timeout = settings.PLAYWRIGHT_TIMEOUT
-        self.screenshot_dir = os.path.join(settings.WORKSPACE_DIR, "screenshots")
+        self.screenshot_dir = os.path.join(settings.WORKSPACE_DIR, "static", "screenshots")
         os.makedirs(self.screenshot_dir, exist_ok=True)
 
     async def browse_url(

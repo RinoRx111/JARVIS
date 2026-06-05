@@ -4,6 +4,9 @@ from app.api.v1.chat import router as chat_router
 from app.api.v1.agents import router as agents_router
 from app.api.v1.files import router as files_router
 from app.api.v1.memory import router as memory_router
+from app.api.v1.gmail import router as gmail_router
+from app.api.v1.calendar import router as calendar_router
+from app.api.v1.browser import router as browser_router
 
 router = APIRouter()
 router.include_router(auth_router)
@@ -11,3 +14,7 @@ router.include_router(chat_router)
 router.include_router(agents_router)
 router.include_router(files_router)
 router.include_router(memory_router)
+router.include_router(gmail_router)
+router.include_router(calendar_router)
+router.include_router(browser_router)
+

@@ -211,3 +211,9 @@ async def google_callback(payload: OAuthLoginRequest, db: Session = Depends(get_
             "refresh_token": app_refresh,
             "token_type": "bearer"
         }
+
+@router.get("/me", response_model=UserResponse)
+def get_me(current_user: User = Depends(get_current_user)):
+    """Retrieve details of the currently authenticated user."""
+    return current_user
+
