@@ -32,6 +32,7 @@ class Settings(BaseSettings):
     CHROMA_PORT: int = 8000
 
     # --- RUNTIMES & MODELS ---
+    DEFAULT_LLM_PROVIDER: str = "openai"
     OLLAMA_API_URL: str = "http://localhost:11434"
     OPENAI_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None

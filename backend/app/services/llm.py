@@ -79,6 +79,19 @@ def route_llm(task_type: Optional[str] = None, temperature: float = 0.7) -> Base
     - default/general: GPT-4o
     - fallback/offline: Ollama
     """
+    # 0. Check for explicit LLM provider override
+    provider = settings.DEFAULT_LLM_PROVIDER.lower()
+    if provider == "ollama":
+        return get_ollama_client(temperature)
+    elif provider == "gemini":
+        gemini = get_gemini_client(temperature)
+        if gemini:
+            return gemini
+    elif provider == "anthropic":
+        claude = get_claude_client(temperature)
+        if claude:
+            return claude
+
     # 1. Routing by Task Type
     if task_type in ("code", "planning"):
         claude = get_claude_client(temperature)
