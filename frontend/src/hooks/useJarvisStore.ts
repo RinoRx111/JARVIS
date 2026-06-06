@@ -286,8 +286,11 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
     const token = localStorage.getItem('jarvis_token');
     if (!token) return;
     
-    // Connect WebSocket
-    const wsUrl = `ws://localhost:8000/api/v1/chat/ws?token=${token}`;
+    // Connect WebSocket dynamically based on NEXT_PUBLIC_API_URL or fallback host
+    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    const wsProtocol = apiBase.startsWith('https') ? 'wss:' : 'ws:';
+    const wsHost = apiBase.replace(/^https?:\/\//, '');
+    const wsUrl = `${wsProtocol}//${wsHost}/api/v1/chat/ws?token=${token}`;
     socket = new WebSocket(wsUrl);
 
     socket.onopen = () => {
@@ -441,7 +444,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
     try {
       const endpoint = query ? `/memory/search?query=${encodeURIComponent(query)}` : '/memory/search?query=';
       const res = await api.get(endpoint);
-      set({ memories: res.data });
+      set({ memories: res.data?.results || [] });
     } catch (err) {
       console.error(err);
     }

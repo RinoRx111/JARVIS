@@ -16,12 +16,14 @@ logger = logging.getLogger(__name__)
 
 # Helper to verify paths are inside safe workspace directory
 def _get_safe_path(filepath: str) -> str:
-    # Resolve absolute path
-    base_dir = os.path.abspath(settings.WORKSPACE_DIR)
-    target_path = os.path.abspath(os.path.join(base_dir, filepath))
-    if not target_path.startswith(base_dir):
+    from pathlib import Path
+    base_dir = Path(settings.WORKSPACE_DIR).resolve()
+    target_path = Path(base_dir / filepath).resolve()
+    try:
+        target_path.relative_to(base_dir)
+    except ValueError:
         raise PermissionError(f"Access denied: path '{filepath}' is outside workspace boundaries.")
-    return target_path
+    return str(target_path)
 
 # --- AUTOMATION TOOLS ---
 

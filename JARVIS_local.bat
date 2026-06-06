@@ -40,15 +40,17 @@ if not exist .env (
 echo [2/4] Initializing Python backend environment...
 cd backend
 python -m pip install -r requirements.txt >nul 2>&1
-:: Launch uvicorn backend server in background
-start /b python -m uvicorn app.main:app --host 127.0.0.1 --port 8000 > uvicorn.log 2>&1
+echo Installing browser dependencies for Virtual Browser...
+python -m playwright install chromium
+:: Launch uvicorn backend server in a separate persistent window
+start "JARVIS Backend Server" cmd /k "python -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
 cd ..
 
 :: 5. Install & Run Frontend
 echo [3/4] Initializing React/Next.js frontend environment...
 cd frontend
-:: Launch next.js server in background
-start /b npm run dev > nextjs.log 2>&1
+:: Launch next.js server in a separate persistent window
+start "JARVIS Frontend Console" cmd /k "npm run dev"
 cd ..
 
 :: 6. Wait for servers to bind

@@ -1,6 +1,6 @@
 import os
 from typing import Optional
-from pydantic import Field
+from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -14,7 +14,6 @@ class Settings(BaseSettings):
     ENV: str = "development"
     DEBUG: bool = True
     PROJECT_NAME: str = "JARVIS - AI Operating System"
-
     # --- SECURITY ---
     SECRET_KEY: str = "generate_a_secure_jwt_secret_key_here_minimum_32_chars"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
@@ -56,6 +55,19 @@ class Settings(BaseSettings):
     WORKSPACE_DIR: str = "/tmp/jarvis_workspace"
     PLAYWRIGHT_HEADLESS: bool = True
     PLAYWRIGHT_TIMEOUT: int = 30000
+
+    @model_validator(mode="after")
+    def sanitize_placeholders(self) -> "Settings":
+        fields_to_sanitize = [
+            "OPENAI_API_KEY", "GEMINI_API_KEY", "ANTHROPIC_API_KEY", 
+            "ELEVENLABS_API_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", 
+            "GITHUB_TOKEN", "WEATHER_API_KEY", "NEWS_API_KEY"
+        ]
+        for field in fields_to_sanitize:
+            val = getattr(self, field)
+            if val and (val.startswith("your_") or val.startswith("generate_")):
+                setattr(self, field, None)
+        return self
 
     def get_database_url(self) -> str:
         if self.DATABASE_URL:

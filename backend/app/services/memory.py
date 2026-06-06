@@ -178,7 +178,10 @@ class MemoryService:
             logger.error("ChromaDB memory collection is unavailable.")
             return ""
         
-        doc_id = f"user_{user_id}_mem_{hash(content)}"
+        import hashlib
+        # Use a deterministic SHA-256 hash instead of Python's process-bound built-in hash()
+        content_hash = hashlib.sha256(content.encode("utf-8")).hexdigest()
+        doc_id = f"user_{user_id}_mem_{content_hash}"
         embedding = self._get_embedding(content)
         meta = metadata or {}
         meta["user_id"] = user_id

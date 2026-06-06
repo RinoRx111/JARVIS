@@ -10,7 +10,7 @@ interface VoiceOrbProps {
 export default function VoiceOrb({ status, onClick, isWebSocket }: VoiceOrbProps) {
   const [rotation, setRotation] = useState(0);
 
-  // Generate continuous rotation values for concentric rings when thinking
+  // Generate continuous rotation values for concentric rings when thinking or speaking
   useEffect(() => {
     let animationFrameId: number;
     const animate = () => {
@@ -18,7 +18,7 @@ export default function VoiceOrb({ status, onClick, isWebSocket }: VoiceOrbProps
       animationFrameId = requestAnimationFrame(animate);
     };
 
-    if (status === 'THINKING') {
+    if (status === 'THINKING' || status === 'SPEAKING') {
       animationFrameId = requestAnimationFrame(animate);
     }
     return () => cancelAnimationFrame(animationFrameId);
