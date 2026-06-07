@@ -15,7 +15,7 @@ class Conversation(SQLModel, table=True):
 
     # Relationships
     user: "User" = Relationship(back_populates="conversations")
-    messages: List["Message"] = Relationship(back_populates="conversation", cascade_delete=True)
+    messages: List["Message"] = Relationship(back_populates="conversation", sa_relationship_kwargs={"cascade": "all, delete-orphan"})
 
 class Message(SQLModel, table=True):
     __tablename__ = "messages"
