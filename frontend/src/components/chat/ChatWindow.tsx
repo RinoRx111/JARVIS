@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, Plus, Loader2 } from 'lucide-react';
+import { Send, Mic, Plus, Loader2, Volume2, VolumeX, Square } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useJarvisStore } from '@/hooks/useJarvisStore';
 import { wsService } from '@/services/websocket';
@@ -36,6 +36,27 @@ export function ChatWindow() {
 
 
 
+  const handleStop = () => {
+    // 1. Cancel local browser speech synthesis
+    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+    }
+    // 2. Stop ElevenLabs playback by clearing the URL
+    store.setVoicePlaybackUrl(null);
+    
+    // 3. Reset core status to standby
+    store.setCoreStatus('STANDBY');
+    
+    // 4. Force disconnect websocket to interrupt streaming
+    wsService.close();
+    setTimeout(() => {
+      wsService.init(); // Reconnect immediately after aborting
+      store.addNotification("Generation interrupted by user.");
+    }, 500);
+  };
+
+  const isGenerating = store.coreStatus === 'THINKING' || store.coreStatus === 'SPEAKING';
+
   return (
     <div className="flex flex-col h-full w-full relative">
       {/* Header */}
@@ -44,10 +65,21 @@ export function ChatWindow() {
           <h1 className="text-lg font-medium text-white">JARVIS Assistant</h1>
           <p className="text-xs text-primary">All systems online</p>
         </div>
-        <Button variant="glass" size="sm" onClick={() => store.startNewChat()}>
-          <Plus size={16} className="mr-2" />
-          New Chat
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => store.setVoiceActive(!store.isVoiceActive)}
+            className="text-muted-foreground hover:text-white"
+            title={store.isVoiceActive ? "Mute Voice" : "Unmute Voice"}
+          >
+            {store.isVoiceActive ? <Volume2 size={18} /> : <VolumeX size={18} />}
+          </Button>
+          <Button variant="glass" size="sm" onClick={() => store.startNewChat()}>
+            <Plus size={16} className="mr-2" />
+            New Chat
+          </Button>
+        </div>
       </header>
 
       {/* Messages Area */}
@@ -94,14 +126,27 @@ export function ChatWindow() {
               }}
             />
             
-            <Button 
-              type="submit" 
-              size="icon" 
-              className="shrink-0 rounded-xl"
-              disabled={!input.trim()}
-            >
-              <Send size={18} className="ml-1" />
-            </Button>
+            {isGenerating ? (
+              <Button 
+                type="button" 
+                size="icon" 
+                variant="destructive"
+                className="shrink-0 rounded-xl"
+                onClick={handleStop}
+                title="Stop Generation"
+              >
+                <Square size={16} className="fill-current" />
+              </Button>
+            ) : (
+              <Button 
+                type="submit" 
+                size="icon" 
+                className="shrink-0 rounded-xl"
+                disabled={!input.trim()}
+              >
+                <Send size={18} className="ml-1" />
+              </Button>
+            )}
           </form>
           <div className="text-center mt-2">
             <span className="text-[10px] text-muted-foreground">JARVIS OS v2.0 • AI can make mistakes. Consider verifying important information.</span>
