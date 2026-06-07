@@ -27,7 +27,8 @@ class WebSocketService {
         const store = useJarvisStore.getState();
         
         if (data.type === 'transcription') {
-          store.addMessage({ id: Date.now() - 1, role: 'user', content: data.text, created_at: new Date().toISOString() });
+          store.addMessage({ id: Date.now() - 1, role: 'user', content: data.text, created_at: new Date().toISOString() } as any);
+          store.addMessage({ id: Date.now(), role: 'assistant', content: '', created_at: new Date().toISOString() } as any);
           store.addNotification(`Transcription synced: "${data.text}"`);
           store.setCoreStatus('THINKING');
         } else if (data.type === 'token') {
@@ -99,6 +100,8 @@ class WebSocketService {
       useJarvisStore.setState({ coreStatus: 'THINKING' });
       const userMessage = { id: Date.now(), role: 'user', content: text, created_at: new Date().toISOString() };
       useJarvisStore.getState().addMessage(userMessage as any);
+      const placeholderAssistant = { id: Date.now() + 1, role: 'assistant', content: '', created_at: new Date().toISOString() };
+      useJarvisStore.getState().addMessage(placeholderAssistant as any);
       this.socket.send(JSON.stringify({ text }));
     } else {
       useJarvisStore.getState().addNotification("Uplink inactive. Cannot stream text.");

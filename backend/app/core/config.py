@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     GEMINI_API_KEY: Optional[str] = None
     ANTHROPIC_API_KEY: Optional[str] = None
     GROQ_API_KEY: Optional[str] = None
+    GROQ_API_KEY_FILE: Optional[str] = None
 
     # --- VOICE PROVIDERS ---
     ELEVENLABS_API_KEY: Optional[str] = None
@@ -68,6 +69,13 @@ class Settings(BaseSettings):
             val = getattr(self, field)
             if val and (val.startswith("your_") or val.startswith("generate_")):
                 setattr(self, field, None)
+        
+        # Load API key from file if GROQ_API_KEY_FILE is provided
+        if self.GROQ_API_KEY_FILE and os.path.exists(self.GROQ_API_KEY_FILE):
+            with open(self.GROQ_API_KEY_FILE, "r") as f:
+                key = f.read().strip()
+                if key and not key.startswith("PASTE_YOUR"):
+                    self.GROQ_API_KEY = key
         return self
 
     def get_database_url(self) -> str:

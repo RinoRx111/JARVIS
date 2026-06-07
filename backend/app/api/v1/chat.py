@@ -164,8 +164,9 @@ async def send_chat_message(
         # Final response is the content of the last assistant message
         agent_reply = final_state["messages"][-1].content
     except Exception as err:
-        logger.error(f"Agent Orchestrator graph execution crash: {err}")
-        agent_reply = f"API Error: {str(err)}"
+        import traceback
+        logger.error(f"Agent Orchestrator graph execution crash: {err}\n{traceback.format_exc()}")
+        agent_reply = f"API Error: {repr(err)}"
 
     # 5. Synthesize voice if requested
     voice_url = None
@@ -183,8 +184,11 @@ async def send_chat_message(
     db.commit()
 
     # 7. Check if we should save a memory fact in background
-    from app.services.memory_agent import run_memory_extraction_agent
-    run_memory_extraction_agent.delay(current_user.id, payload.content)
+    try:
+        from app.services.memory_agent import run_memory_extraction_agent
+        run_memory_extraction_agent.delay(current_user.id, payload.content)
+    except Exception as e:
+        logger.warning(f"Failed to queue memory extraction (Celery broker may be offline): {e}")
 
     return {
         "conversation_id": conversation.id,
@@ -252,7 +256,13 @@ async def websocket_chat_endpoint(websocket: WebSocket, token: str, db: Session 
             
             # 2. Handlers for text input queries
             elif "text" in data:
-                text_input = data["text"]
+                raw_text = data["text"]
+                try:
+                    import json
+                    parsed = json.loads(raw_text)
+                    text_input = parsed.get("text", raw_text)
+                except Exception:
+                    text_input = raw_text
                 await _ws_process_response(websocket, text_input, user, db)
                 
     except WebSocketDisconnect:
@@ -278,8 +288,11 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
         db.refresh(conversation)
 
     # Launch memory extraction agent as an independent background task
-    from app.services.memory_agent import run_memory_extraction_agent
-    run_memory_extraction_agent.delay(user.id, prompt)
+    try:
+        from app.services.memory_agent import run_memory_extraction_agent
+        run_memory_extraction_agent.delay(user.id, prompt)
+    except Exception as e:
+        logger.warning(f"Failed to queue memory extraction (Celery broker may be offline): {e}")
 
     # Invoke agent graph
     inputs = {
@@ -309,8 +322,9 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
                 await websocket.send_json({"type": "status", "message": f"Invoking sub-routine: {tool_name}..."})
                 
     except Exception as err:
-        logger.error(f"WebSocket graph streaming error: {err}")
-        agent_reply = f"API Error: {str(err)}"
+        import traceback
+        logger.error(f"WebSocket graph streaming error: {err}\n{traceback.format_exc()}")
+        agent_reply = f"API Error: {repr(err)}"
 
     # If the response somehow ended up empty, fallback to the final state message
     if not agent_reply:
@@ -319,7 +333,9 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
             agent_reply = final_state["messages"][-1].content
             await websocket.send_json({"type": "token", "token": agent_reply})
         except Exception as err:
-            agent_reply = f"API Error: {str(err)}"
+            import traceback
+            logger.error(f"Fallback graph execution crash: {err}\n{traceback.format_exc()}")
+            agent_reply = f"API Error: {repr(err)}"
 
     # Synthesize audio speech
     voice_url = await synthesize_voice_elevenlabs(agent_reply)

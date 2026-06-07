@@ -101,9 +101,13 @@ def route_llm(task_type: Optional[str] = None, temperature: float = 0.7) -> Base
     # 0. Check for explicit LLM provider override
     provider = settings.DEFAULT_LLM_PROVIDER.lower()
     if provider == "groq":
-        return get_groq_client(temperature)
+        groq = get_groq_client(temperature)
+        if groq:
+            return groq
     elif provider == "ollama":
-        return get_ollama_client(temperature)
+        ollama = get_ollama_client(temperature)
+        if ollama:
+            return ollama
     elif provider == "gemini":
         gemini = get_gemini_client(temperature)
         if gemini:
@@ -143,4 +147,8 @@ def route_llm(task_type: Optional[str] = None, temperature: float = 0.7) -> Base
 
     # 3. Local model fallback
     logger.info("No cloud credentials found. Routing to local Ollama runtime.")
-    return get_ollama_client(temperature)
+    fallback = get_ollama_client(temperature)
+    if fallback:
+        return fallback
+        
+    raise ValueError("No LLM provider is configured or available. Please set GROQ_API_KEY, OPENAI_API_KEY, or others in .env.")

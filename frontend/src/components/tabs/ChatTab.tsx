@@ -19,9 +19,6 @@ export default function ChatTab() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [store.messages]);
 
-  useEffect(() => {
-    wsService.init();
-  }, []);
 
   const startRecording = async () => {
     try {

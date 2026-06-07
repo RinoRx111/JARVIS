@@ -249,8 +249,9 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
 
   sendChatMessage: async (content) => {
     const userMessage = { id: Date.now(), role: 'user', content, created_at: new Date().toISOString() } as Message;
+    const placeholderAssistant = { id: Date.now() + 1, role: 'assistant', content: '[Thinking...]', created_at: new Date().toISOString() } as Message;
     set({ 
-      messages: [...get().messages, userMessage],
+      messages: [...get().messages, userMessage, placeholderAssistant],
       coreStatus: 'THINKING' 
     });
 
@@ -263,14 +264,14 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
 
       const { response: replyText, voice_url, conversation_id } = response.data;
       
-      const assistantMessage = { id: Date.now() + 1, role: 'assistant', content: replyText, voice_url, created_at: new Date().toISOString() } as Message;
+      const assistantMessage = { id: Date.now() + 2, role: 'assistant', content: replyText, voice_url, created_at: new Date().toISOString() } as Message;
 
-      set({
-        messages: [...get().messages, assistantMessage],
+      set((state) => ({
+        messages: [...state.messages.slice(0, -1), assistantMessage],
         activeConversationId: conversation_id,
         coreStatus: voice_url ? 'SPEAKING' : 'STANDBY',
         voicePlaybackUrl: voice_url || null
-      });
+      }));
 
       if (voice_url) {
         get().addNotification("Voice synthesizer output generated.");

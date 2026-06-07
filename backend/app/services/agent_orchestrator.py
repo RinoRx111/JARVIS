@@ -2,7 +2,7 @@ import logging
 import json
 from typing import TypedDict, Annotated, Sequence, Dict, Any
 
-from langchain_core.messages import BaseMessage, AIMessage, ToolMessage
+from langchain_core.messages import BaseMessage, AIMessage, ToolMessage, SystemMessage
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
 
@@ -53,7 +53,7 @@ async def call_model_node(state: AgentState) -> Dict[str, Any]:
     )
 
     # Combine instructions
-    full_messages = [AIMessage(content=system_prompt)] + list(messages)
+    full_messages = [SystemMessage(content=system_prompt)] + list(messages)
 
     # Route and invoke model
     model = route_llm(task_type=task_type)

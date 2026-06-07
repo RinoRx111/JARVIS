@@ -1,14 +1,18 @@
 "use client";
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { ContextPanel } from './ContextPanel';
-
+import { wsService } from '@/services/websocket';
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  useEffect(() => {
+    wsService.init();
+  }, []);
+
   return (
     <div className="flex h-screen w-full bg-background overflow-hidden selection:bg-primary/30">
       <Sidebar />

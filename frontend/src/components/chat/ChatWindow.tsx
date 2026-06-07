@@ -24,9 +24,7 @@ export function ChatWindow() {
     scrollToBottom();
   }, [store.messages]);
 
-  useEffect(() => {
-    wsService.init();
-  }, []);
+
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
@@ -36,14 +34,7 @@ export function ChatWindow() {
     setInput('');
   };
 
-  // Mock tools for UI demo if not connected yet
-  const demoTool: ToolExecutionProps = {
-    toolName: "duckduckgo_search",
-    status: "success",
-    durationMs: 450,
-    input: '{"query": "Next.js updates"}',
-    output: "Found 3 results..."
-  };
+
 
   return (
     <div className="flex flex-col h-full w-full relative">
@@ -73,10 +64,7 @@ export function ChatWindow() {
             {store.messages.map((msg, idx) => (
               <React.Fragment key={msg.id || idx}>
                 <MessageBubble message={msg as any} />
-                {/* Randomly inject a tool execution for demo purposes if it's an assistant response */}
-                {msg.role === 'assistant' && idx === store.messages.length - 1 && (
-                  <ToolExecutionNode tool={demoTool} index={idx} />
-                )}
+
               </React.Fragment>
             ))}
             <div ref={messagesEndRef} />
