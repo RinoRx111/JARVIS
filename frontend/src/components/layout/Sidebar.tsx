@@ -13,11 +13,13 @@ import {
   Zap, 
   Settings,
   Menu,
-  ChevronLeft
+  ChevronLeft,
+  LogOut
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useJarvisStore } from '@/hooks/useJarvisStore';
 
 const navItems = [
   { name: 'AI Chat', icon: MessageSquare, href: '/' },
@@ -33,6 +35,7 @@ const navItems = [
 export function Sidebar() {
   const [isExpanded, setIsExpanded] = useState(true);
   const pathname = usePathname();
+  const store = useJarvisStore();
 
   return (
     <motion.aside
@@ -104,6 +107,18 @@ export function Sidebar() {
             </motion.span>
           </div>
         </Link>
+        <div 
+          onClick={() => store.logout()}
+          className="flex items-center gap-3 px-3 py-2.5 mt-1 cursor-pointer rounded-lg transition-all duration-200 text-destructive/70 hover:bg-destructive/10 hover:text-destructive"
+        >
+          <LogOut size={20} className="min-w-[20px]" />
+          <motion.span 
+            animate={{ opacity: isExpanded ? 1 : 0 }}
+            className={cn("font-medium text-sm whitespace-nowrap", !isExpanded && "hidden")}
+          >
+            Sign Out
+          </motion.span>
+        </div>
       </div>
     </motion.aside>
   );

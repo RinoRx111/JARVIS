@@ -19,7 +19,9 @@ from app.services.agent_orchestrator import agent_graph
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/chat", tags=["Conversational Chat & Voice"])
+from app.core.security import decode_token
+
+router = APIRouter(prefix="/chat", tags=["AI Chat"])
 
 # Directory to save generated synthetic audio files
 VOICE_OUTPUT_DIR = os.path.join(settings.WORKSPACE_DIR, "static", "voice")
@@ -244,19 +246,29 @@ async def send_chat_message(
 
 @router.websocket("/ws")
 async def websocket_chat_endpoint(websocket: WebSocket, token: str, db: Session = Depends(get_db)):
-    """
-    WebSocket endpoint. Streams audio/text inputs directly, transcribes 
-    using Whisper, invokes Agent planning, and returns synthetic speech.
-    """
+    """Establish real-time communication for bidirectional AI streams."""
     await websocket.accept()
     
-    # Validate token
-    user = await get_ws_user(token, db)
+    # Secure JWT token decoding for WebSocket auth
+    payload = decode_token(token)
+    if not payload or payload.get("type") != "access":
+        await websocket.send_json({"error": "Authentication failed", "type": "error"})
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+        
+    user_id = payload.get("sub")
+    if not user_id:
+        await websocket.send_json({"error": "Authentication failed", "type": "error"})
+        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        return
+        
+    user = db.exec(select(User).where(User.id == int(user_id))).first()
     if not user:
+        await websocket.send_json({"error": "Authentication failed", "type": "error"})
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
-    logger.info(f"WebSocket voice connection opened for user ID: {user.id}")
+    logger.info(f"WebSocket secure stream opened for User {user.id}")
 
     try:
         while True:

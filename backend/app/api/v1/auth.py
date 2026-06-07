@@ -17,20 +17,29 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
-# Dependency helper to fetch active user (Bypassed for local Desktop mode)
-def get_current_user(db: Session = Depends(get_db)) -> User:
-    # Bypass authentication for local Desktop App
-    user = db.exec(select(User).where(User.email == "local@jarvis.os")).first()
+# Dependency helper to fetch active user
+def get_current_user(
+    db: Session = Depends(get_db),
+    token: str = Depends(oauth2_scheme)
+) -> User:
+    credentials_exception = HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+    
+    payload = decode_token(token)
+    if not payload or payload.get("type") != "access":
+        raise credentials_exception
+        
+    user_id: str = payload.get("sub")
+    if user_id is None:
+        raise credentials_exception
+        
+    user = db.exec(select(User).where(User.id == int(user_id))).first()
     if not user:
-        # Create a default active user
-        user = User(
-            email="local@jarvis.os",
-            hashed_password=get_password_hash("desktop_mode"),
-            is_active=True
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
+        raise credentials_exception
+        
     return user
 
 class RoleChecker:
@@ -49,6 +58,12 @@ class RoleChecker:
                 detail=f"Operation not permitted: insufficient privileges. Required roles: {[r.value for r in self.allowed_roles]}"
             )
         return current_user
+
+@router.get("/setup-status")
+def setup_status(db: Session = Depends(get_db)):
+    """Checks if any user is registered yet to determine if Setup Mode is needed."""
+    count = db.exec(select(User)).all()
+    return {"needs_setup": len(count) == 0}
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user_in: UserCreate, db: Session = Depends(get_db)):

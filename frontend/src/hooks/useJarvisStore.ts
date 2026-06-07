@@ -69,6 +69,8 @@ interface JarvisState {
   token: string | null;
   user: User | null;
   authLoading: boolean;
+  needsSetup: boolean;
+  checkSetupStatus: () => Promise<void>;
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
@@ -170,14 +172,71 @@ let socket: WebSocket | null = null;
 
 export const useJarvisStore = create<JarvisState>((set, get) => ({
   // Auth initial state
-  token: 'local_mode',
-  user: { id: 1, email: 'local@jarvis.os', role: 'admin', is_active: true },
-  authLoading: false,
+  // Auth initial state
+  token: null,
+  user: null,
+  authLoading: true,
+  needsSetup: false,
 
-  login: async (email, password) => { return true; },
-  register: async (email, password) => { return true; },
-  logout: () => {},
-  checkAuth: async () => { return true; },
+  checkSetupStatus: async () => {
+    try {
+      const res = await api.get('/auth/setup-status');
+      set({ needsSetup: res.data.needs_setup });
+    } catch (err) {
+      console.error(err);
+    }
+  },
+
+  login: async (email, password) => {
+    try {
+      const res = await api.post('/auth/login', { email, password });
+      const token = res.data.access_token;
+      localStorage.setItem('jarvis_token', token);
+      set({ token });
+      await get().checkAuth();
+      return true;
+    } catch (err) {
+      console.error('Login failed', err);
+      return false;
+    }
+  },
+
+  register: async (email, password) => {
+    try {
+      await api.post('/auth/register', { email, password });
+      await get().login(email, password);
+      get().checkSetupStatus();
+      return true;
+    } catch (err) {
+      console.error('Registration failed', err);
+      return false;
+    }
+  },
+
+  logout: () => {
+    localStorage.removeItem('jarvis_token');
+    set({ token: null, user: null, messages: [], activeConversationId: null });
+  },
+
+  checkAuth: async () => {
+    const token = localStorage.getItem('jarvis_token');
+    if (!token) {
+      set({ token: null, user: null, authLoading: false });
+      return false;
+    }
+
+    try {
+      set({ token });
+      const res = await api.get('/auth/me');
+      set({ user: res.data, authLoading: false });
+      return true;
+    } catch (err) {
+      console.error('Auth check failed', err);
+      localStorage.removeItem('jarvis_token');
+      set({ token: null, user: null, authLoading: false });
+      return false;
+    }
+  },
 
   // Navigation state
   activeTab: 'dashboard',
