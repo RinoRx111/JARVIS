@@ -98,9 +98,9 @@ interface JarvisState {
   wsLog: string[];
   fetchChatHistory: (conversationId?: number) => Promise<void>;
   sendChatMessage: (content: string) => Promise<void>;
-  sendVoiceChunk: (audioBlob: Blob) => Promise<void>;
-  initWebSocket: () => void;
-  closeWebSocket: () => void;
+  startNewChat: () => void;
+  addMessage: (msg: Message) => void;
+  updateLastMessage: (chunk: string) => void;
 
   // File Management
   files: any[];
@@ -149,66 +149,32 @@ interface JarvisState {
   setTtsVoice: (voice: string) => void;
 }
 
+const speakLocalTTS = (text: string) => {
+  if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+    window.speechSynthesis.cancel(); // Stop any currently playing audio
+    const cleanText = text.replace(/[*_~`#]/g, ''); // Strip markdown
+    const utterance = new SpeechSynthesisUtterance(cleanText);
+    utterance.rate = 1.05;
+    utterance.pitch = 0.95;
+    const voices = window.speechSynthesis.getVoices();
+    const voice = voices.find(v => v.name.includes('Google UK English Male') || v.name.includes('Microsoft Mark') || v.name.includes('Daniel') || v.name.includes('English'));
+    if (voice) utterance.voice = voice;
+    window.speechSynthesis.speak(utterance);
+  }
+};
+
 let socket: WebSocket | null = null;
 
 export const useJarvisStore = create<JarvisState>((set, get) => ({
   // Auth initial state
-  token: typeof window !== 'undefined' ? localStorage.getItem('jarvis_token') : null,
-  user: null,
-  authLoading: true,
+  token: 'local_mode',
+  user: { id: 1, email: 'local@jarvis.os', role: 'admin', is_active: true },
+  authLoading: false,
 
-  login: async (email, password) => {
-    try {
-      const res = await api.post('/auth/login', { email, password });
-      const { access_token } = res.data;
-      localStorage.setItem('jarvis_token', access_token);
-      set({ token: access_token });
-      const userRes = await api.get('/auth/me');
-      set({ user: userRes.data, token: access_token });
-      get().addNotification("Core link authorized. Profile loaded.");
-      return true;
-    } catch (err) {
-      console.error(err);
-      return false;
-    }
-  },
-
-  register: async (email, password) => {
-    try {
-      await api.post('/auth/register', { email, password });
-      get().addNotification("User registered successfully. Initializing access tokens...");
-      return await get().login(email, password);
-    } catch (err) {
-      console.error(err);
-      return false;
-    }
-  },
-
-  logout: () => {
-    localStorage.removeItem('jarvis_token');
-    set({ token: null, user: null, messages: [], activeConversationId: null });
-    get().addNotification("System link closed. Logged out.");
-  },
-
-  checkAuth: async () => {
-    set({ authLoading: true });
-    const localToken = localStorage.getItem('jarvis_token');
-    if (!localToken) {
-      set({ authLoading: false });
-      return false;
-    }
-    try {
-      set({ token: localToken });
-      const res = await api.get('/auth/me');
-      set({ user: res.data, authLoading: false });
-      get().addNotification("Secure session restored.");
-      return true;
-    } catch (err) {
-      localStorage.removeItem('jarvis_token');
-      set({ token: null, user: null, authLoading: false });
-      return false;
-    }
-  },
+  login: async (email, password) => { return true; },
+  register: async (email, password) => { return true; },
+  logout: () => {},
+  checkAuth: async () => { return true; },
 
   // Navigation state
   activeTab: 'dashboard',
@@ -243,13 +209,51 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
   wsLog: [],
 
   fetchChatHistory: async (conversationId) => {
-    // Mocks / Loading is handled simply.
-    // In our backend, there is no explicit listing route for messages except loading one conversation
-    // or through LangGraph updates. Let's create fallback chat context if empty.
+    try {
+      const res = await api.get('/chat/history');
+      if (res.data && res.data.messages) {
+        set({
+          messages: res.data.messages,
+          activeConversationId: res.data.conversation_id
+        });
+      }
+    } catch (err) {
+      console.error("Failed to fetch chat history:", err);
+    }
+  },
+
+  startNewChat: () => {
+    set({ messages: [], activeConversationId: null, coreStatus: 'STANDBY' });
+  },
+
+  addMessage: (msg: Message) => {
+    set((state) => ({ messages: [...state.messages, msg] }));
+  },
+
+  updateLastMessage: (chunk: string) => {
+    set((state) => {
+      const messages = [...state.messages];
+      if (messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
+        messages[messages.length - 1].content += chunk;
+      } else {
+        messages.push({
+          id: Date.now(),
+          role: 'assistant',
+          content: chunk,
+          created_at: new Date().toISOString()
+        } as Message);
+      }
+      return { messages };
+    });
   },
 
   sendChatMessage: async (content) => {
-    set({ coreStatus: 'THINKING' });
+    const userMessage = { id: Date.now(), role: 'user', content, created_at: new Date().toISOString() } as Message;
+    set({ 
+      messages: [...get().messages, userMessage],
+      coreStatus: 'THINKING' 
+    });
+
     try {
       const response = await api.post('/chat', {
         content,
@@ -259,14 +263,10 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
 
       const { response: replyText, voice_url, conversation_id } = response.data;
       
-      const newMessages = [
-        ...get().messages,
-        { id: Date.now() - 1, role: 'user', content, created_at: new Date().toISOString() } as Message,
-        { id: Date.now(), role: 'assistant', content: replyText, voice_url, created_at: new Date().toISOString() } as Message
-      ];
+      const assistantMessage = { id: Date.now() + 1, role: 'assistant', content: replyText, voice_url, created_at: new Date().toISOString() } as Message;
 
       set({
-        messages: newMessages,
+        messages: [...get().messages, assistantMessage],
         activeConversationId: conversation_id,
         coreStatus: voice_url ? 'SPEAKING' : 'STANDBY',
         voicePlaybackUrl: voice_url || null
@@ -274,6 +274,9 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
 
       if (voice_url) {
         get().addNotification("Voice synthesizer output generated.");
+      } else if (get().isVoiceActive) {
+        speakLocalTTS(replyText);
+        get().addNotification("Local TTS voice fallback activated.");
       }
     } catch (err) {
       console.error(err);
@@ -281,76 +284,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
     }
   },
 
-  initWebSocket: () => {
-    if (socket) return;
-    const token = localStorage.getItem('jarvis_token');
-    if (!token) return;
-    
-    // Connect WebSocket dynamically based on NEXT_PUBLIC_API_URL or fallback host
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-    const wsProtocol = apiBase.startsWith('https') ? 'wss:' : 'ws:';
-    const wsHost = apiBase.replace(/^https?:\/\//, '');
-    const wsUrl = `${wsProtocol}//${wsHost}/api/v1/chat/ws?token=${token}`;
-    socket = new WebSocket(wsUrl);
 
-    socket.onopen = () => {
-      set({ wsConnected: true });
-      get().addNotification("Voice stream uplink connected via WebSocket.");
-    };
-
-    socket.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'transcription') {
-          // Add transcribed user input
-          set((state) => ({
-            messages: [...state.messages, { id: Date.now() - 1, role: 'user', content: data.text, created_at: new Date().toISOString() }]
-          }));
-          get().addNotification(`Transcription synced: "${data.text}"`);
-          set({ coreStatus: 'THINKING' });
-        } else if (data.type === 'agent_response') {
-          set((state) => ({
-            messages: [...state.messages, { id: Date.now(), role: 'assistant', content: data.text, voice_url: data.voice_url, created_at: new Date().toISOString() }],
-            coreStatus: data.voice_url ? 'SPEAKING' : 'STANDBY',
-            voicePlaybackUrl: data.voice_url || null
-          }));
-        } else if (data.error) {
-          get().addNotification(`Uplink warning: ${data.error}`);
-          set({ coreStatus: 'STANDBY' });
-        }
-      } catch (e) {
-        console.error("WebSocket message parsing error:", e);
-      }
-    };
-
-    socket.onclose = () => {
-      set({ wsConnected: false });
-      socket = null;
-      get().addNotification("Voice stream uplink offline.");
-    };
-
-    socket.onerror = (err) => {
-      console.error("WS connection error:", err);
-      set({ wsConnected: false });
-    };
-  },
-
-  closeWebSocket: () => {
-    if (socket) {
-      socket.close();
-      socket = null;
-    }
-  },
-
-  sendVoiceChunk: async (audioBlob) => {
-    if (socket && socket.readyState === WebSocket.OPEN) {
-      set({ coreStatus: 'LISTENING' });
-      const arrayBuffer = await audioBlob.arrayBuffer();
-      socket.send(arrayBuffer);
-    } else {
-      get().addNotification("Uplink inactive. Cannot stream audio.");
-    }
-  },
 
   // File Center
   files: [],
@@ -420,21 +354,45 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
 
   runBrowserAutomation: async (url, actions) => {
     set({ browserUrl: url, browserStatus: 'running', browserScreenshotUrl: null });
-    get().addNotification(`Launching virtual browser grid for: ${url}`);
+    get().addNotification(`Launching virtual browser grid for: ${url}...`);
     try {
-      const res = await api.post('/browser/browse', { url, actions });
-      set({
-        browserStatus: 'completed',
-        browserScreenshotUrl: res.data.screenshot_url,
-        browserTitle: res.data.title,
-        browserText: res.data.extracted_text,
-        browserActionsLog: res.data.actions_log || []
-      });
-      get().addNotification(`Browser automation completed. Target title: "${res.data.title}"`);
+      const initRes = await api.post('/browser/browse', { url, actions });
+      const taskId = initRes.data.task_id;
+      
+      if (!taskId) throw new Error("No task ID returned");
+      
+      // Poll for completion
+      const pollInterval = setInterval(async () => {
+        try {
+          const statusRes = await api.get(`/browser/task/${taskId}`);
+          const taskData = statusRes.data;
+          
+          if (taskData.status === 'success') {
+            clearInterval(pollInterval);
+            set({
+              browserStatus: 'completed',
+              browserScreenshotUrl: taskData.screenshot_url,
+              browserTitle: taskData.title,
+              browserText: taskData.extracted_text,
+              browserActionsLog: taskData.actions_log || []
+            });
+            get().addNotification(`Browser automation completed. Target title: "${taskData.title}"`);
+          } else if (taskData.status === 'failed') {
+            clearInterval(pollInterval);
+            set({ browserStatus: 'failed' });
+            get().addNotification(`Browser automation failed: ${taskData.error}`);
+          }
+        } catch (pollErr) {
+          console.error("Polling error:", pollErr);
+          clearInterval(pollInterval);
+          set({ browserStatus: 'failed' });
+        }
+      }, 2000);
+      
     } catch (err: any) {
       console.error(err);
       set({ browserStatus: 'failed' });
-      get().addNotification(`Browser automation aborted: ${err.response?.data?.detail || err.message}`);
+      get().addNotification(`Browser automation request failed.`);
     }
   },
 

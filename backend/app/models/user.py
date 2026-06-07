@@ -1,7 +1,13 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, TYPE_CHECKING
 from enum import Enum
 from sqlmodel import SQLModel, Field, Relationship
+
+if TYPE_CHECKING:
+    from app.models.conversation import Conversation
+    from app.models.task import AgentTask
+    from app.models.audit import AuditLog
+    from app.models.file import FileMetadata
 
 class Role(str, Enum):
     ADMIN = "admin"
@@ -12,16 +18,17 @@ class User(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(index=True, nullable=False, unique=True)
-    hashed_password: Optional[str] = Field(default=None, nullable=True)
+    hashed_password: str
     is_active: bool = Field(default=True)
-    role: Role = Field(default=Role.USER)
+    role: str = Field(default="user")
 
-    # Google OAuth credentials
-    google_oauth_token: Optional[str] = Field(default=None, nullable=True)
-    google_refresh_token: Optional[str] = Field(default=None, nullable=True)
+    # OAuth credentials
+    google_oauth_token: Optional[str] = Field(default=None)
+    google_refresh_token: Optional[str] = Field(default=None)
 
-    created_at: datetime = Field(default_factory=datetime.utcnow)
-    updated_at: datetime = Field(default_factory=datetime.utcnow)
+    # Timestamps
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
 
     # Relationships (placeholders for SQLModel)
     conversations: List["Conversation"] = Relationship(back_populates="user")

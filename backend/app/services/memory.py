@@ -6,96 +6,8 @@ from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-try:
-    import chromadb
-    from chromadb.config import Settings as ChromaSettings
-    HAS_CHROMADB = True
-except ImportError:
-    HAS_CHROMADB = False
-
-    class MockCollection:
-        def __init__(self, name: str, metadata: dict = None):
-            self.name = name
-            self.metadata = metadata or {}
-            self.ids = []
-            self.documents = []
-            self.metadatas = []
-            self.embeddings = []
-
-        def add(self, ids, embeddings, documents, metadatas):
-            for i, emb, doc, meta in zip(ids, embeddings, documents, metadatas):
-                if i in self.ids:
-                    idx = self.ids.index(i)
-                    self.documents[idx] = doc
-                    self.metadatas[idx] = meta
-                    self.embeddings[idx] = emb
-                else:
-                    self.ids.append(i)
-                    self.embeddings.append(emb)
-                    self.documents.append(doc)
-                    self.metadatas.append(meta)
-
-        def query(self, query_embeddings, n_results=5, where=None):
-            matched_docs = []
-            matched_metas = []
-            matched_ids = []
-            
-            # Extract standard key/value filters
-            for idx, (doc, meta, i) in enumerate(zip(self.documents, self.metadatas, self.ids)):
-                match = True
-                if where:
-                    for k, v in where.items():
-                        if meta.get(k) != v:
-                            match = False
-                            break
-                if match:
-                    matched_docs.append(doc)
-                    matched_metas.append(meta)
-                    matched_ids.append(i)
-                    
-            limit = min(n_results, len(matched_docs))
-            return {
-                "ids": [matched_ids[:limit]],
-                "documents": [matched_docs[:limit]],
-                "metadatas": [matched_metas[:limit]]
-            }
-
-        def get(self, ids):
-            matched_ids = []
-            matched_metas = []
-            matched_docs = []
-            for i in ids:
-                if i in self.ids:
-                    idx = self.ids.index(i)
-                    matched_ids.append(i)
-                    matched_metas.append(self.metadatas[idx])
-                    matched_docs.append(self.documents[idx])
-            return {
-                "ids": matched_ids,
-                "metadatas": matched_metas,
-                "documents": matched_docs
-            }
-
-        def delete(self, ids):
-            for i in ids:
-                if i in self.ids:
-                    idx = self.ids.index(i)
-                    del self.ids[idx]
-                    del self.embeddings[idx]
-                    del self.documents[idx]
-                    del self.metadatas[idx]
-
-    class MockChromaClient:
-        def __init__(self):
-            self.collections = {}
-
-        def get_or_create_collection(self, name: str, metadata: dict = None):
-            if name not in self.collections:
-                self.collections[name] = MockCollection(name, metadata)
-            return self.collections[name]
-
-        def heartbeat(self):
-            return True
+import chromadb
+from chromadb.config import Settings as ChromaSettings
 
 
 class MemoryService:
@@ -112,30 +24,26 @@ class MemoryService:
         self._initialize_chroma()
 
     def _initialize_chroma(self):
-        if not HAS_CHROMADB:
-            logger.warning("chromadb package is not installed. Using in-memory MockChromaClient fallback.")
-            self.client = MockChromaClient()
-        else:
-            try:
-                # Attempt HTTP client connection (configured for docker orchestration)
-                logger.info(f"Connecting to ChromaDB at {settings.CHROMA_HOST}:{settings.CHROMA_PORT}...")
-                self.client = chromadb.HttpClient(
-                    host=settings.CHROMA_HOST,
-                    port=settings.CHROMA_PORT,
-                    settings=ChromaSettings(anonymized_telemetry=False)
-                )
-                # Ping database to verify connection
-                self.client.heartbeat()
-                logger.info("Successfully connected to HTTP ChromaDB service.")
-            except Exception as e:
-                logger.warning(f"Could not connect to ChromaDB HTTP service: {e}. Falling back to local PersistentClient.")
-                # Fall back to localized persistence directory (ensures server runs locally out-of-box)
-                persist_dir = os.path.join(settings.WORKSPACE_DIR, "chroma_persistence")
-                os.makedirs(persist_dir, exist_ok=True)
-                self.client = chromadb.PersistentClient(
-                    path=persist_dir,
-                    settings=ChromaSettings(anonymized_telemetry=False)
-                )
+        try:
+            # Attempt HTTP client connection (configured for docker orchestration)
+            logger.info(f"Connecting to ChromaDB at {settings.CHROMA_HOST}:{settings.CHROMA_PORT}...")
+            self.client = chromadb.HttpClient(
+                host=settings.CHROMA_HOST,
+                port=settings.CHROMA_PORT,
+                settings=ChromaSettings(anonymized_telemetry=False)
+            )
+            # Ping database to verify connection
+            self.client.heartbeat()
+            logger.info("Successfully connected to HTTP ChromaDB service.")
+        except Exception as e:
+            logger.warning(f"Could not connect to ChromaDB HTTP service: {e}. Falling back to local PersistentClient.")
+            # Fall back to localized persistence directory
+            persist_dir = os.path.join(settings.WORKSPACE_DIR, "chroma_persistence")
+            os.makedirs(persist_dir, exist_ok=True)
+            self.client = chromadb.PersistentClient(
+                path=persist_dir,
+                settings=ChromaSettings(anonymized_telemetry=False)
+            )
 
         try:
             # Initialize collections

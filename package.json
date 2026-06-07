@@ -1,0 +1,18 @@
+{
+  "name": "jarvis-os",
+  "version": "1.0.0",
+  "description": "JARVIS AI Operating System Desktop App",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "tree-kill": "^1.2.2"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0",
+    "electron-builder": "^26.15.0"
+  }
+}

@@ -1,8 +1,7 @@
 import os
 import logging
-from typing import List, Dict, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
 from app.api.v1.auth import get_current_user
@@ -42,36 +41,57 @@ async def execute_browse(
             })
             
     try:
-        logger.info(f"Executing automate browse request for user {current_user.id} to URL: {payload.url}")
+        # Schedule browser automation as a background task
+        import uuid
+        import asyncio
+        task_id = str(uuid.uuid4())
         
-        # Call the Playwright browser service
-        res = await browser_service.browse_url(payload.url, actions=actions_list)
+        # Store task status in memory for this prototype
+        # In production this would be in Redis or DB
+        if not hasattr(router, "tasks"):
+            router.tasks = {}
+            
+        router.tasks[task_id] = {"status": "processing"}
         
-        if res.get("status") == "success":
-            # Map absolute screenshot path to static URL path for frontend rendering
-            raw_path = res.get("screenshot_path")
-            screenshot_url = None
-            if raw_path:
-                filename = os.path.basename(raw_path)
-                screenshot_url = f"/static/screenshots/{filename}"
-                
-            return {
-                "status": "success",
-                "url": res.get("url"),
-                "title": res.get("title"),
-                "screenshot_url": screenshot_url,
-                "actions_log": res.get("actions_log", []),
-                "extracted_text": res.get("text")[:2000] # Truncate to save bandwidth
-            }
-        else:
-            raise HTTPException(
-                status_code=500, 
-                detail=f"Browser automation failed: {res.get('message', 'Unknown Playwright error.')}"
-            )
+        async def background_browse():
+            try:
+                res = await browser_service.browse_url(payload.url, actions=actions_list)
+                if res.get("status") == "success":
+                    raw_path = res.get("screenshot_path")
+                    screenshot_url = None
+                    if raw_path:
+                        filename = os.path.basename(raw_path)
+                        screenshot_url = f"/static/screenshots/{filename}"
+                        
+                    router.tasks[task_id] = {
+                        "status": "success",
+                        "url": res.get("url"),
+                        "title": res.get("title"),
+                        "screenshot_url": screenshot_url,
+                        "actions_log": res.get("actions_log", []),
+                        "extracted_text": res.get("text")[:2000]
+                    }
+                else:
+                    router.tasks[task_id] = {"status": "failed", "error": res.get("message")}
+            except Exception as e:
+                router.tasks[task_id] = {"status": "failed", "error": str(e)}
+
+        asyncio.create_task(background_browse())
+        
+        return {
+            "status": "processing",
+            "task_id": task_id,
+            "message": "Browser automation offloaded to background task."
+        }
             
     except Exception as e:
         logger.error(f"Browser automation endpoint crash: {e}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Automation error: {str(e)}"
-        )
+        raise HTTPException(status_code=500, detail=f"Automation error: {str(e)}")
+
+@router.get("/task/{task_id}")
+async def get_browser_task_status(task_id: str):
+    """Poll endpoint to check background browser automation status."""
+    if not hasattr(router, "tasks") or task_id not in router.tasks:
+        raise HTTPException(status_code=404, detail="Task not found")
+        
+    return router.tasks[task_id]

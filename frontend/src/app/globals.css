@@ -2,175 +2,84 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;500;700;900&family=Share+Tech+Mono&family=Inter:wght@300;400;500;600&display=swap');
+@layer base {
+  :root {
+    --background: 0 0% 4%;
+    --foreground: 0 0% 98%;
 
-:root {
-  --neon-cyan: 0, 243, 255;
-  --neon-amber: 255, 170, 0;
-  --neon-red: 255, 0, 85;
-  --neon-green: 0, 255, 136;
+    --card: 0 0% 6%;
+    --card-foreground: 0 0% 98%;
+
+    --popover: 0 0% 6%;
+    --popover-foreground: 0 0% 98%;
+
+    --primary: 191 100% 50%; /* Deep blue/cyan #00d8ff */
+    --primary-foreground: 0 0% 0%;
+
+    --secondary: 240 4% 16%;
+    --secondary-foreground: 0 0% 98%;
+
+    --muted: 240 5% 12%;
+    --muted-foreground: 240 5% 65%;
+
+    --accent: 240 5% 16%;
+    --accent-foreground: 0 0% 98%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 98%;
+
+    --border: 240 6% 15%;
+    --input: 240 6% 15%;
+    --ring: 191 100% 50%;
+
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    /* Subtle noise texture for premium depth without being distracting */
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)' opacity='0.02'/%3E%3C/svg%3E");
+    background-attachment: fixed;
+  }
+}
+
+@layer utilities {
+  .glass-panel {
+    @apply bg-white/5 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.4)];
+  }
   
-  --bg-deep: 3, 8, 20;
-  --bg-dark: 8, 14, 30;
-  --fg-hologram: 175, 230, 255;
-}
+  .glass-card {
+    @apply bg-white/[0.03] backdrop-blur-md border border-white/5 shadow-sm transition-all duration-300;
+  }
+  
+  .glass-card:hover {
+    @apply bg-white/[0.06] border-white/10 shadow-md;
+  }
 
-body {
-  color: rgb(var(--fg-hologram));
-  background-color: rgb(var(--bg-deep));
-  background-image: 
-    radial-gradient(circle at 50% 30%, rgba(var(--neon-cyan), 0.08) 0%, transparent 60%),
-    radial-gradient(circle at 10% 80%, rgba(var(--neon-amber), 0.04) 0%, transparent 50%),
-    linear-gradient(rgba(18, 30, 60, 0.25) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(18, 30, 60, 0.25) 1px, transparent 1px);
-  background-size: 100% 100%, 100% 100%, 40px 40px, 40px 40px;
-  background-attachment: fixed;
-  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-  min-height: 100vh;
-  overflow-x: hidden;
-}
-
-/* Monospace overrides for grids / data logs */
-.font-mono-digital {
-  font-family: 'Share Tech Mono', monospace;
-}
-
-.font-orbitron {
-  font-family: 'Orbitron', sans-serif;
-}
-
-/* Cyberpunk terminal CRT scanlines overlay */
-body::after {
-  content: " ";
-  display: block;
-  position: fixed;
-  top: 0;
-  left: 0;
-  bottom: 0;
-  right: 0;
-  background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-  z-index: 99999;
-  background-size: 100% 4px, 6px 100%;
-  pointer-events: none;
-  opacity: 0.35;
-}
-
-/* Glassmorphism panel styling */
-.glass-panel {
-  background: rgba(8, 16, 32, 0.65);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid rgba(var(--neon-cyan), 0.2);
-  box-shadow: 
-    0 10px 40px rgba(0, 0, 0, 0.6),
-    inset 0 0 20px rgba(var(--neon-cyan), 0.05);
-}
-
-.glass-panel-amber {
-  background: rgba(16, 12, 4, 0.65);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(var(--neon-amber), 0.2);
-  box-shadow: 
-    0 10px 40px rgba(0, 0, 0, 0.6),
-    inset 0 0 20px rgba(var(--neon-amber), 0.05);
-}
-
-.glass-panel-red {
-  background: rgba(16, 4, 8, 0.65);
-  backdrop-filter: blur(14px);
-  border: 1px solid rgba(var(--neon-red), 0.2);
-  box-shadow: 
-    0 10px 40px rgba(0, 0, 0, 0.6),
-    inset 0 0 20px rgba(var(--neon-red), 0.05);
-}
-
-/* Glowing Neon utility classes */
-.text-neon-cyan {
-  color: rgb(var(--neon-cyan));
-  text-shadow: 0 0 8px rgba(var(--neon-cyan), 0.6), 0 0 20px rgba(var(--neon-cyan), 0.3);
-}
-
-.text-neon-amber {
-  color: rgb(var(--neon-amber));
-  text-shadow: 0 0 8px rgba(var(--neon-amber), 0.6), 0 0 20px rgba(var(--neon-amber), 0.3);
-}
-
-.text-neon-red {
-  color: rgb(var(--neon-red));
-  text-shadow: 0 0 8px rgba(var(--neon-red), 0.6), 0 0 20px rgba(var(--neon-red), 0.3);
-}
-
-.border-neon-glow {
-  box-shadow: 0 0 10px rgba(var(--neon-cyan), 0.25), inset 0 0 10px rgba(var(--neon-cyan), 0.1);
-}
-
-.border-neon-glow-amber {
-  box-shadow: 0 0 10px rgba(var(--neon-amber), 0.25), inset 0 0 10px rgba(var(--neon-amber), 0.1);
-}
-
-/* Audio visualizer spectrum bars */
-@keyframes voiceWave {
-  0%, 100% { height: 10px; }
-  50% { height: 64px; }
-}
-
-.voice-bar {
-  animation: voiceWave 1s ease-in-out infinite;
-}
-
-/* Custom scrollbars */
-::-webkit-scrollbar {
-  width: 5px;
-  height: 5px;
-}
-
-::-webkit-scrollbar-track {
-  background: rgba(var(--bg-deep), 0.5);
-}
-
-::-webkit-scrollbar-thumb {
-  background: rgba(var(--neon-cyan), 0.3);
-  border-radius: 4px;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--neon-cyan), 0.6);
-}
-
-/* Angular Tech corners / border styling */
-.tech-border-clip {
-  position: relative;
-}
-
-.tech-border-clip::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 8px;
-  height: 8px;
-  border-top: 2px solid rgb(var(--neon-cyan));
-  border-left: 2px solid rgb(var(--neon-cyan));
-}
-
-.tech-border-clip::after {
-  content: "";
-  position: absolute;
-  bottom: 0;
-  right: 0;
-  width: 8px;
-  height: 8px;
-  border-bottom: 2px solid rgb(var(--neon-cyan));
-  border-right: 2px solid rgb(var(--neon-cyan));
-}
-
-/* Radar scanning grid */
-@keyframes radarSweep {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
-
-.radar-sweep-effect {
-  animation: radarSweep 8s linear infinite;
-  transform-origin: center;
+  .text-glow {
+    text-shadow: 0 0 10px rgba(0, 216, 255, 0.4);
+  }
+  
+  /* Modern scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  ::-webkit-scrollbar-thumb {
+    @apply bg-white/10 rounded-full;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-white/20;
+  }
 }

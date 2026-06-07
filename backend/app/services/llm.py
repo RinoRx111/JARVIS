@@ -2,8 +2,12 @@ import logging
 from typing import Optional, Any
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_openai import ChatOpenAI
-from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_anthropic import ChatAnthropic
+try:
+    from langchain_groq import ChatGroq
+except ImportError:
+    ChatGroq = None
+
 try:
     from langchain_community.chat_models.ollama import ChatOllama
 except ImportError:
@@ -13,6 +17,7 @@ except ImportError:
         class ChatOllama:
             def __init__(self, *args, **kwargs):
                 pass
+
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
@@ -39,10 +44,11 @@ def get_gemini_client(temperature: float = 0.5) -> BaseChatModel:
     cache_key = f"gemini_{temperature}"
     if cache_key not in _model_cache:
         if settings.GEMINI_API_KEY:
-            _model_cache[cache_key] = ChatGoogleGenerativeAI(
-                model="gemini-1.5-pro",
+            _model_cache[cache_key] = ChatOpenAI(
+                model="gemini-2.5-pro",
                 temperature=temperature,
-                google_api_key=settings.GEMINI_API_KEY
+                openai_api_key=settings.GEMINI_API_KEY,
+                openai_api_base="https://generativelanguage.googleapis.com/v1beta/openai/"
             )
         else:
             _model_cache[cache_key] = None
@@ -61,12 +67,25 @@ def get_claude_client(temperature: float = 0.2) -> BaseChatModel:
             _model_cache[cache_key] = None
     return _model_cache[cache_key]
 
+def get_groq_client(temperature: float = 0.7) -> BaseChatModel:
+    cache_key = f"groq_{temperature}"
+    if cache_key not in _model_cache:
+        if settings.GROQ_API_KEY and ChatGroq:
+            _model_cache[cache_key] = ChatGroq(
+                model="llama-3.3-70b-versatile",
+                temperature=temperature,
+                groq_api_key=settings.GROQ_API_KEY
+            )
+        else:
+            _model_cache[cache_key] = None
+    return _model_cache[cache_key]
+
 def get_ollama_client(temperature: float = 0.7) -> BaseChatModel:
     cache_key = f"ollama_{temperature}"
     if cache_key not in _model_cache:
         _model_cache[cache_key] = ChatOllama(
             base_url=settings.OLLAMA_API_URL,
-            model="llama3",
+            model="qwen3.5:9b",
             temperature=temperature
         )
     return _model_cache[cache_key]
@@ -81,7 +100,9 @@ def route_llm(task_type: Optional[str] = None, temperature: float = 0.7) -> Base
     """
     # 0. Check for explicit LLM provider override
     provider = settings.DEFAULT_LLM_PROVIDER.lower()
-    if provider == "ollama":
+    if provider == "groq":
+        return get_groq_client(temperature)
+    elif provider == "ollama":
         return get_ollama_client(temperature)
     elif provider == "gemini":
         gemini = get_gemini_client(temperature)

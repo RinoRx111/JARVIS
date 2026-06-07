@@ -1,21 +1,25 @@
-from datetime import datetime
-from typing import Optional
+from datetime import datetime, timezone
+from typing import Optional, TYPE_CHECKING
 from sqlmodel import SQLModel, Field, Relationship
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 class AgentTask(SQLModel, table=True):
     __tablename__ = "agent_tasks"
 
     id: Optional[int] = Field(default=None, primary_key=True)
-    user_id: int = Field(foreign_key="users.id", nullable=False)
-    title: str = Field(nullable=False)
-    description: Optional[str] = Field(default=None, nullable=True)
+    user_id: int = Field(foreign_key="users.id")
+    task_type: str
+    description: str
     status: str = Field(default="pending") # "pending", "running", "completed", "failed"
-    result: Optional[str] = Field(default=None, nullable=True) # JSON or text result summary
-    errors: Optional[str] = Field(default=None, nullable=True)
-    created_at: datetime = Field(default_factory=datetime.utcnow)
+    result: Optional[str] = Field(default=None)
+    
+    # Timestamps
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(
-        default_factory=datetime.utcnow,
-        sa_column_kwargs={"onupdate": datetime.utcnow}
+        default_factory=lambda: datetime.now(timezone.utc),
+        sa_column_kwargs={"onupdate": lambda: datetime.now(timezone.utc)}
     )
 
     # Relationships

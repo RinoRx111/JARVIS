@@ -1,27 +1,17 @@
 import logging
 import json
-from typing import TypedDict, Annotated, Sequence, List, Dict, Any, Union
-from typing_extensions import Required
-from sqlalchemy.orm import Session
+from typing import TypedDict, Annotated, Sequence, Dict, Any
 
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
-from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.messages import BaseMessage, AIMessage, ToolMessage
 from langgraph.graph import StateGraph, END
 from langgraph.graph.message import add_messages
-from langgraph.prebuilt import ToolNode
 
-from app.core.config import settings
 from app.services.llm import route_llm
 from app.services.memory import memory_service
-from app.tools.registry import (
-    agent_tools, 
-    invoke_gmail_list, 
-    invoke_gmail_send, 
-    invoke_calendar_list, 
-    invoke_calendar_create
-)
 from app.models.user import User
 from app.models.audit import AuditLog
+from app.core.database import engine
+from sqlmodel import Session, select
 
 logger = logging.getLogger(__name__)
 
@@ -30,9 +20,8 @@ class AgentState(TypedDict):
     messages: Annotated[Sequence[BaseMessage], add_messages]
     task_type: str
     user_id: int
-    # We pass the db session as an optional Any object to write audit logs
-    db: Any 
     error_count: int
+    tool_call_depth: int
 
 # --- NODE DEFINITIONS ---
 
@@ -45,7 +34,6 @@ async def call_model_node(state: AgentState) -> Dict[str, Any]:
     messages = state["messages"]
     task_type = state["task_type"]
     user_id = state["user_id"]
-    db = state["db"]
 
     # Retrieve memory context to inject into prompt
     memories = memory_service.search_user_memories(user_id=user_id, query=messages[-1].content, limit=3)
@@ -70,13 +58,14 @@ async def call_model_node(state: AgentState) -> Dict[str, Any]:
     # Route and invoke model
     model = route_llm(task_type=task_type)
     
+    from app.tools.plugin_manager import plugin_manager
     # Bind standard LangChain tool schemas
-    model_with_tools = model.bind_tools(agent_tools)
+    model_with_tools = model.bind_tools(plugin_manager.get_all_tools())
     
     # Run prediction
     response = await model_with_tools.ainvoke(full_messages)
     
-    return {"messages": [response], "error_count": 0}
+    return {"messages": [response]}
 
 async def execute_tools_node(state: AgentState) -> Dict[str, Any]:
     """
@@ -87,95 +76,94 @@ async def execute_tools_node(state: AgentState) -> Dict[str, Any]:
     messages = state["messages"]
     last_message = messages[-1]
     user_id = state["user_id"]
-    db = state["db"]
     error_count = state["error_count"]
 
     tool_outputs = []
     
     if hasattr(last_message, "tool_calls") and last_message.tool_calls:
         # Load user context from DB to pass to OAuth services
-        user = db.query(User).filter(User.id == user_id).first() if db else None
+        with Session(engine) as db:
+            user = db.exec(select(User).where(User.id == user_id)).first()
 
-        for tool_call in last_message.tool_calls:
-            tool_name = tool_call["name"]
-            arguments = tool_call["args"]
-            tool_call_id = tool_call["id"]
-            
-            logger.info(f"Invoking tool '{tool_name}' with arguments: {arguments}")
-            
-            # 1. Custom Google Workspace Interceptors
-            if tool_name == "gmail_list_emails_tool" or "gmail" in tool_name.lower() and "list" in tool_name.lower():
-                limit = arguments.get("limit", 5)
-                result = await invoke_gmail_list(user, db, limit=limit)
-                status = "success"
+            for tool_call in last_message.tool_calls:
+                tool_name = tool_call["name"]
+                arguments = tool_call["args"]
+                tool_call_id = tool_call["id"]
                 
-            elif tool_name == "gmail_send_email_tool" or "gmail" in tool_name.lower() and "send" in tool_name.lower():
-                result = await invoke_gmail_send(
-                    user, db, 
-                    to=arguments.get("to"), 
-                    subject=arguments.get("subject"), 
-                    body=arguments.get("body")
-                )
-                status = "success" if "success" in result.lower() else "failed"
+                logger.info(f"Invoking tool '{tool_name}' with arguments: {arguments}")
+                
+                from app.tools.plugin_manager import plugin_manager
+                
+                # 1. Custom Context-Aware Handlers (e.g. Google APIs)
+                # Normalize common names that the LLM might output
+                if "gmail" in tool_name.lower() and "list" in tool_name.lower():
+                    tool_name = "gmail_list_emails_tool"
+                elif "gmail" in tool_name.lower() and "send" in tool_name.lower():
+                    tool_name = "gmail_send_email_tool"
+                elif "calendar" in tool_name.lower() and "list" in tool_name.lower():
+                    tool_name = "calendar_list_events_tool"
+                elif "calendar" in tool_name.lower() and "create" in tool_name.lower():
+                    tool_name = "calendar_create_event_tool"
 
-            elif tool_name == "calendar_list_events_tool" or "calendar" in tool_name.lower() and "list" in tool_name.lower():
-                limit = arguments.get("limit", 10)
-                result = await invoke_calendar_list(user, db, limit=limit)
-                status = "success"
-
-            elif tool_name == "calendar_create_event_tool" or "calendar" in tool_name.lower() and "create" in tool_name.lower():
-                result = await invoke_calendar_create(
-                    user, db,
-                    summary=arguments.get("summary"),
-                    start_time=arguments.get("start_time"),
-                    end_time=arguments.get("end_time"),
-                    description=arguments.get("description")
-                )
-                status = "success" if "success" in result.lower() else "failed"
-
-            # 2. Standard Registry Tools routing
-            else:
-                target_tool = next((t for t in agent_tools if t.name == tool_name), None)
-                if target_tool:
+                import time
+                import traceback
+                start_time = time.time()
+                error_details = None
+                
+                custom_handler = plugin_manager.get_custom_handler(tool_name)
+                if custom_handler:
                     try:
-                        # Call standard tool (supports both sync and async runtimes)
-                        if target_tool.is_coroutine:
-                            result = await target_tool.ainvoke(arguments)
-                        else:
-                            result = target_tool.invoke(arguments)
-                        status = "success"
+                        result = await custom_handler(user, db, **arguments)
+                        status = "success" if "failed" not in str(result).lower() else "failed"
                     except Exception as err:
-                        result = f"Tool Execution Error: {str(err)}"
+                        error_details = traceback.format_exc()
+                        result = f"Custom Handler Error: {str(err)}"
                         status = "failed"
                         error_count += 1
                 else:
-                    result = f"Error: Tool '{tool_name}' is not recognized."
-                    status = "failed"
-                    error_count += 1
+                    # 2. Standard Registry Tools routing
+                    target_tool = plugin_manager.get_tool(tool_name)
+                    if target_tool:
+                        try:
+                            result = await target_tool.ainvoke(arguments)
+                            status = "success"
+                        except Exception as err:
+                            error_details = traceback.format_exc()
+                            result = f"Tool Execution Error: {str(err)}"
+                            status = "failed"
+                            error_count += 1
+                    else:
+                        result = f"Error: Tool '{tool_name}' is not recognized in PluginManager."
+                        status = "failed"
+                        error_count += 1
 
-            # Save audit logs to database
-            if db and user:
-                audit = AuditLog(
-                    user_id=user.id,
-                    agent_name="JARVIS_Orchestrator",
-                    action=tool_name,
-                    parameters=json.dumps(arguments),
-                    status=status,
-                    response=str(result)[:1000]
+                duration_ms = int((time.time() - start_time) * 1000)
+
+                # Save audit logs to database
+                if db and user:
+                    audit = AuditLog(
+                        user_id=user.id,
+                        agent_name="JARVIS_Orchestrator",
+                        action=tool_name,
+                        parameters=json.dumps(arguments),
+                        status=status,
+                        response=str(result)[:1000],
+                        error_details=error_details,
+                        duration_ms=duration_ms
+                    )
+                    db.add(audit)
+                    db.commit()
+
+                # Append structured Tool response message
+                tool_outputs.append(
+                    ToolMessage(
+                        content=str(result),
+                        tool_call_id=tool_call_id,
+                        name=tool_name
+                    )
                 )
-                db.add(audit)
-                db.commit()
 
-            # Append structured Tool response message
-            tool_outputs.append(
-                ToolMessage(
-                    content=str(result),
-                    tool_call_id=tool_call_id,
-                    name=tool_name
-                )
-            )
-
-    return {"messages": tool_outputs, "error_count": error_count}
+    return {"messages": tool_outputs, "error_count": error_count, "tool_call_depth": state.get("tool_call_depth", 0) + 1}
 
 # --- EDGE ROUTING FUNCTION ---
 
@@ -184,10 +172,15 @@ def should_continue(state: AgentState) -> str:
     messages = state["messages"]
     last_message = messages[-1]
     error_count = state["error_count"]
+    depth = state.get("tool_call_depth", 0)
     
     # Cap retry/error counts to prevent infinite execution loops
     if error_count > 3:
         logger.warning("Agent execution exceeded maximum self-correcting error threshold. Halting.")
+        return END
+
+    if depth > 10:
+        logger.warning("Agent execution exceeded maximum tool call depth. Halting.")
         return END
 
     if hasattr(last_message, "tool_calls") and last_message.tool_calls:

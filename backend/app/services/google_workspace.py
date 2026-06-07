@@ -1,6 +1,6 @@
 import logging
 import httpx
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from app.core.config import settings

@@ -1,9 +1,7 @@
 import os
-import sys
 import logging
 import subprocess
-import shutil
-from typing import List, Dict, Any, Optional
+from typing import Optional
 from langchain_core.tools import tool
 from sqlalchemy.orm import Session
 from app.core.config import settings
@@ -52,8 +50,21 @@ def search_web_tool(query: str) -> str:
         except Exception as e:
             logger.error(f"Tavily search failed: {e}")
             
-    # Fallback/Mock web search results matching common query structures
-    return f"Search result for '{query}': JARVIS completed search. Results match active online trends on AI Operating Systems and Python sandboxing."
+    # Fallback to free DuckDuckGo search
+    try:
+        from ddgs import DDGS
+        with DDGS() as ddgs:
+            results = list(ddgs.text(query, max_results=4))
+            if results:
+                summary = []
+                for r in results:
+                    summary.append(f"Title: {r.get('title')}\nURL: {r.get('href')}\nContent: {r.get('body')}\n")
+                return "\n".join(summary)
+            else:
+                return f"No results found for '{query}'."
+    except Exception as e:
+        logger.error(f"DuckDuckGo search failed: {e}")
+        return f"Search result for '{query}': Error accessing internet search. ({e})"
 
 @tool
 async def browse_website_tool(url: str) -> str:
@@ -226,6 +237,26 @@ async def invoke_calendar_create(
     except Exception as e:
         return f"Calendar creation error: {e}"
 
+@tool
+def gmail_list_emails_tool(limit: int = 5) -> str:
+    """Lists emails from the connected Gmail account."""
+    pass
+
+@tool
+def gmail_send_email_tool(to: str, subject: str, body: str) -> str:
+    """Sends an email using the connected Gmail account."""
+    pass
+
+@tool
+def calendar_list_events_tool(limit: int = 5) -> str:
+    """Lists upcoming events from the connected Google Calendar."""
+    pass
+
+@tool
+def calendar_create_event_tool(summary: str, start_time: str, end_time: str, description: Optional[str] = None) -> str:
+    """Creates a new event in the connected Google Calendar. Times must be in ISO format."""
+    pass
+
 # List of LangChain compatible tools for standard Agent LLM bindings
 agent_tools = [
     search_web_tool,
@@ -235,5 +266,20 @@ agent_tools = [
     read_file_tool,
     list_files_tool,
     read_pdf_tool,
-    open_application_tool
+    open_application_tool,
+    gmail_list_emails_tool,
+    gmail_send_email_tool,
+    calendar_list_events_tool,
+    calendar_create_event_tool
 ]
+
+# Register to PluginManager
+from app.tools.plugin_manager import plugin_manager
+for t in agent_tools:
+    plugin_manager.register_tool(t)
+
+# Register custom Google API wrapper handlers that need context
+plugin_manager.register_custom_handler("gmail_list_emails_tool", invoke_gmail_list)
+plugin_manager.register_custom_handler("gmail_send_email_tool", invoke_gmail_send)
+plugin_manager.register_custom_handler("calendar_list_events_tool", invoke_calendar_list)
+plugin_manager.register_custom_handler("calendar_create_event_tool", invoke_calendar_create)

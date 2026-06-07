@@ -1,10 +1,9 @@
 import httpx
 import logging
 from typing import List
-from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
-from sqlalchemy.orm import Session
+from sqlmodel import Session, select
 
 from app.core.config import settings
 from app.core.database import get_db
@@ -18,29 +17,20 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
 
-# Dependency helper to fetch active user from JWT token
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    payload = decode_token(token)
-    if not payload or payload.get("type") != "access":
-        raise credentials_exception
-    
-    user_id_str: str = payload.get("sub")
-    if user_id_str is None:
-        raise credentials_exception
-        
-    try:
-        user_id = int(user_id_str)
-    except ValueError:
-        raise credentials_exception
-
-    user = db.query(User).filter(User.id == user_id).first()
-    if user is None or not user.is_active:
-        raise credentials_exception
+# Dependency helper to fetch active user (Bypassed for local Desktop mode)
+def get_current_user(db: Session = Depends(get_db)) -> User:
+    # Bypass authentication for local Desktop App
+    user = db.exec(select(User).where(User.email == "local@jarvis.os")).first()
+    if not user:
+        # Create a default active user
+        user = User(
+            email="local@jarvis.os",
+            hashed_password=get_password_hash("desktop_mode"),
+            is_active=True
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
     return user
 
 class RoleChecker:
@@ -63,7 +53,7 @@ class RoleChecker:
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 def register(user_in: UserCreate, db: Session = Depends(get_db)):
     """Registers a new email/password user."""
-    db_user = db.query(User).filter(User.email == user_in.email).first()
+    db_user = db.exec(select(User).where(User.email == user_in.email)).first()
     if db_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -83,7 +73,7 @@ def register(user_in: UserCreate, db: Session = Depends(get_db)):
 @router.post("/login", response_model=Token)
 def login(user_in: UserLogin, db: Session = Depends(get_db)):
     """Authenticates email/password and returns authorization JWT tokens."""
-    user = db.query(User).filter(User.email == user_in.email).first()
+    user = db.exec(select(User).where(User.email == user_in.email)).first()
     if not user or not user.hashed_password or not verify_password(user_in.password, user.hashed_password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -109,7 +99,7 @@ def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
         )
     
     user_id = payload.get("sub")
-    user = db.query(User).filter(User.id == int(user_id)).first()
+    user = db.exec(select(User).where(User.id == int(user_id))).first()
     if not user:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -188,7 +178,7 @@ async def google_callback(payload: OAuthLoginRequest, db: Session = Depends(get_
         email = profile_data.get("email")
         
         # Check if user exists, otherwise register
-        user = db.query(User).filter(User.email == email).first()
+        user = db.exec(select(User).where(User.email == email)).first()
         if not user:
             user = User(email=email)
             db.add(user)

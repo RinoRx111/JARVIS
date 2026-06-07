@@ -2,22 +2,20 @@ import os
 import uuid
 import logging
 import httpx
-from typing import List, Optional, Dict, Any
+from typing import Optional
 from fastapi import APIRouter, Depends, WebSocket, WebSocketDisconnect, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlmodel import Session, select
 from openai import OpenAI
 
 from langchain_core.messages import HumanMessage, AIMessage
 
 from app.core.config import settings
 from app.core.database import get_db
-from app.core.security import decode_token
 from app.models.user import User
 from app.models.conversation import Conversation, Message
 from app.schemas.chat import ChatRequest, ChatResponse
 from app.api.v1.auth import get_current_user
 from app.services.agent_orchestrator import agent_graph
-from app.services.memory import memory_service
 
 logger = logging.getLogger(__name__)
 
@@ -27,13 +25,20 @@ router = APIRouter(prefix="/chat", tags=["Conversational Chat & Voice"])
 VOICE_OUTPUT_DIR = os.path.join(settings.WORKSPACE_DIR, "static", "voice")
 os.makedirs(VOICE_OUTPUT_DIR, exist_ok=True)
 
-# Helper to verify token on WebSocket connection (WebSocket doesn't have standard headers)
+# Helper to verify token on WebSocket connection (Bypassed for local Desktop mode)
 async def get_ws_user(token: str, db: Session) -> Optional[User]:
-    payload = decode_token(token)
-    if not payload or payload.get("type") != "access":
-        return None
-    user_id = payload.get("sub")
-    return db.query(User).filter(User.id == int(user_id)).first()
+    user = db.exec(select(User).where(User.email == "local@jarvis.os")).first()
+    if not user:
+        from app.core.security import get_password_hash
+        user = User(
+            email="local@jarvis.os",
+            hashed_password=get_password_hash("desktop_mode"),
+            is_active=True
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+    return user
 
 async def synthesize_voice_elevenlabs(text: str) -> Optional[str]:
     """Generates synthetic audio file using ElevenLabs API and returns static url path."""
@@ -68,6 +73,36 @@ async def synthesize_voice_elevenlabs(text: str) -> Optional[str]:
         logger.error(f"TTS synthesis exception: {e}")
     return None
 
+@router.get("/history")
+async def get_chat_history(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Fetches the most recent conversation messages for the current user."""
+    conversation = db.exec(select(Conversation).where(
+        Conversation.user_id == current_user.id
+    ).order_by(Conversation.created_at.desc())).first()
+    
+    if not conversation:
+        return {"conversation_id": None, "messages": []}
+        
+    messages = db.exec(select(Message).where(
+        Message.conversation_id == conversation.id
+    ).order_by(Message.created_at.asc())).all()
+    
+    return {
+        "conversation_id": conversation.id,
+        "messages": [
+            {
+                "id": m.id,
+                "role": m.role,
+                "content": m.content,
+                "voice_url": m.voice_url,
+                "created_at": m.created_at.isoformat() if m.created_at else None
+            } for m in messages
+        ]
+    }
+
 @router.post("", response_model=ChatResponse)
 async def send_chat_message(
     payload: ChatRequest,
@@ -78,13 +113,19 @@ async def send_chat_message(
     Submits a conversational request to JARVIS. 
     Triggers LangGraph orchestration nodes and logs all inputs/outputs.
     """
-    # 1. Load or create conversation session
+    # 1. Input Validation
+    if not payload.content or len(payload.content.strip()) == 0:
+        raise HTTPException(status_code=400, detail="Message content cannot be empty.")
+    if len(payload.content) > 4000:
+        raise HTTPException(status_code=400, detail="Message content exceeds maximum length of 4000 characters.")
+    
+    # 2. Load or create conversation session
     conv_id = payload.conversation_id
     if conv_id:
-        conversation = db.query(Conversation).filter(
+        conversation = db.exec(select(Conversation).where(
             Conversation.id == conv_id, 
             Conversation.user_id == current_user.id
-        ).first()
+        )).first()
         if not conversation:
             raise HTTPException(status_code=404, detail="Conversation session not found")
     else:
@@ -99,7 +140,7 @@ async def send_chat_message(
     db.commit()
 
     # 3. Retrieve prior context logs to inject into state
-    db_messages = db.query(Message).filter(Message.conversation_id == conversation.id).order_by(Message.created_at).all()
+    db_messages = db.exec(select(Message).where(Message.conversation_id == conversation.id).order_by(Message.created_at)).all()
     # Convert past messages into LangChain objects
     langchain_history = []
     # Fetch last 10 messages for state context
@@ -114,8 +155,8 @@ async def send_chat_message(
         "messages": langchain_history,
         "task_type": "general",
         "user_id": current_user.id,
-        "db": db,
-        "error_count": 0
+        "error_count": 0,
+        "tool_call_depth": 0
     }
     
     try:
@@ -124,7 +165,7 @@ async def send_chat_message(
         agent_reply = final_state["messages"][-1].content
     except Exception as err:
         logger.error(f"Agent Orchestrator graph execution crash: {err}")
-        agent_reply = "I apologize, but I encountered an internal error processing your request."
+        agent_reply = f"API Error: {str(err)}"
 
     # 5. Synthesize voice if requested
     voice_url = None
@@ -142,10 +183,8 @@ async def send_chat_message(
     db.commit()
 
     # 7. Check if we should save a memory fact in background
-    # Quick utility to extract facts from user message: if user says "Remember that...", index it
-    if payload.content.lower().startswith("remember that"):
-        fact = payload.content[13:].strip()
-        memory_service.add_user_memory(user_id=current_user.id, content=fact)
+    from app.services.memory_agent import run_memory_extraction_agent
+    run_memory_extraction_agent.delay(current_user.id, payload.content)
 
     return {
         "conversation_id": conversation.id,
@@ -209,44 +248,78 @@ async def websocket_chat_endpoint(websocket: WebSocket, token: str, db: Session 
                 await websocket.send_json({"type": "transcription", "text": transcription})
                 
                 # Run the conversational pipeline with the transcribed text
-                response_payload = await _ws_process_response(transcription, user, db)
-                await websocket.send_json(response_payload)
+                await _ws_process_response(websocket, transcription, user, db)
             
             # 2. Handlers for text input queries
             elif "text" in data:
                 text_input = data["text"]
-                response_payload = await _ws_process_response(text_input, user, db)
-                await websocket.send_json(response_payload)
+                await _ws_process_response(websocket, text_input, user, db)
                 
     except WebSocketDisconnect:
         logger.info(f"WebSocket connection closed for user ID: {user.id}")
     except Exception as e:
         logger.error(f"WebSocket runtime exception: {e}")
 
-async def _ws_process_response(prompt: str, user: User, db: Session) -> Dict[str, Any]:
-    """Helper method to run the orchestrator loop and synthesize speech return objects."""
+async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db: Session) -> None:
+    """Helper method to run the orchestrator loop, stream tokens, and synthesize speech."""
+    if not prompt or len(prompt.strip()) == 0:
+        await websocket.send_json({"error": "Message content cannot be empty."})
+        return
+    if len(prompt) > 4000:
+        await websocket.send_json({"error": "Message content exceeds maximum length of 4000 characters."})
+        return
+
     # Create static conversation for web socket streaming events
-    conversation = db.query(Conversation).filter(Conversation.user_id == user.id).first()
+    conversation = db.exec(select(Conversation).where(Conversation.user_id == user.id)).first()
     if not conversation:
         conversation = Conversation(user_id=user.id, title="WebSocket Stream")
         db.add(conversation)
         db.commit()
         db.refresh(conversation)
 
+    # Launch memory extraction agent as an independent background task
+    from app.services.memory_agent import run_memory_extraction_agent
+    run_memory_extraction_agent.delay(user.id, prompt)
+
     # Invoke agent graph
     inputs = {
         "messages": [HumanMessage(content=prompt)],
         "task_type": "general",
         "user_id": user.id,
-        "db": db,
-        "error_count": 0
+        "error_count": 0,
+        "tool_call_depth": 0
     }
     
+    agent_reply = ""
     try:
-        final_state = await agent_graph.ainvoke(inputs)
-        agent_reply = final_state["messages"][-1].content
+        # Stream events from LangGraph
+        async for event in agent_graph.astream_events(inputs, version="v2"):
+            kind = event["event"]
+            
+            # Stream text tokens directly to client
+            if kind == "on_chat_model_stream":
+                chunk = event["data"]["chunk"]
+                if hasattr(chunk, "content") and chunk.content and isinstance(chunk.content, str):
+                    await websocket.send_json({"type": "token", "token": chunk.content})
+                    agent_reply += chunk.content
+                    
+            # Let the UI know when a tool is being called
+            elif kind == "on_tool_start":
+                tool_name = event.get("name", "tool")
+                await websocket.send_json({"type": "status", "message": f"Invoking sub-routine: {tool_name}..."})
+                
     except Exception as err:
-        agent_reply = "Error: graph pipeline failure."
+        logger.error(f"WebSocket graph streaming error: {err}")
+        agent_reply = f"API Error: {str(err)}"
+
+    # If the response somehow ended up empty, fallback to the final state message
+    if not agent_reply:
+        try:
+            final_state = await agent_graph.ainvoke(inputs)
+            agent_reply = final_state["messages"][-1].content
+            await websocket.send_json({"type": "token", "token": agent_reply})
+        except Exception as err:
+            agent_reply = f"API Error: {str(err)}"
 
     # Synthesize audio speech
     voice_url = await synthesize_voice_elevenlabs(agent_reply)
@@ -256,8 +329,9 @@ async def _ws_process_response(prompt: str, user: User, db: Session) -> Dict[str
     db.add(Message(conversation_id=conversation.id, role="assistant", content=agent_reply, voice_url=voice_url))
     db.commit()
 
-    return {
+    # Send final completed packet
+    await websocket.send_json({
         "type": "agent_response",
         "text": agent_reply,
         "voice_url": voice_url
-    }
+    })

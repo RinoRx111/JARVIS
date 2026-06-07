@@ -36,6 +36,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: Optional[str] = None
     GEMINI_API_KEY: Optional[str] = None
     ANTHROPIC_API_KEY: Optional[str] = None
+    GROQ_API_KEY: Optional[str] = None
 
     # --- VOICE PROVIDERS ---
     ELEVENLABS_API_KEY: Optional[str] = None
@@ -59,7 +60,7 @@ class Settings(BaseSettings):
     @model_validator(mode="after")
     def sanitize_placeholders(self) -> "Settings":
         fields_to_sanitize = [
-            "OPENAI_API_KEY", "GEMINI_API_KEY", "ANTHROPIC_API_KEY", 
+            "OPENAI_API_KEY", "GEMINI_API_KEY", "ANTHROPIC_API_KEY", "GROQ_API_KEY",
             "ELEVENLABS_API_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", 
             "GITHUB_TOKEN", "WEATHER_API_KEY", "NEWS_API_KEY"
         ]

@@ -3,7 +3,7 @@ import sys
 import uuid
 import logging
 import subprocess
-from typing import Dict, Any, Tuple
+from typing import Dict, Any, List
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)

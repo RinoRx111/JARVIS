@@ -6,15 +6,19 @@ export const metadata: Metadata = {
   description: "A futuristic AI Assistant + AI Agent operating system.",
 };
 
+import { AppLayout } from "@/components/layout/AppLayout";
+
 export default function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className="antialiased">
-        {children}
+    <html lang="en" className="dark">
+      <body className="antialiased min-h-screen bg-background text-foreground">
+        <AppLayout>
+          {children}
+        </AppLayout>
       </body>
     </html>
   );

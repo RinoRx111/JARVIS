@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react';
+import { motion } from 'framer-motion';
 import clsx from 'clsx';
 
 interface VoiceOrbProps {
@@ -32,12 +33,20 @@ export default function VoiceOrb({ status, onClick, isWebSocket }: VoiceOrbProps
     'rgba(255, 0, 85, 0.65)': status === 'SPEAKING',
   });
 
+  const scaleVariants = {
+    STANDBY: { scale: 1 },
+    THINKING: { scale: [1, 1.05, 1], transition: { repeat: Infinity, duration: 1.5, ease: "easeInOut" } },
+    LISTENING: { scale: [1, 1.1, 1], transition: { repeat: Infinity, duration: 1, ease: "easeInOut" } },
+    SPEAKING: { scale: [1, 1.15, 1], transition: { repeat: Infinity, duration: 0.3, ease: "easeInOut" } },
+  };
+
   return (
     <div
       onClick={onClick}
       className="flex flex-col items-center justify-center p-6 relative select-none cursor-pointer"
     >
-      <div
+      <motion.div
+        animate={scaleVariants[status]}
         className="w-64 h-64 flex items-center justify-center relative rounded-full transition-all duration-500"
         style={{
           boxShadow: `inset 0 0 30px ${glowColor}, 0 0 40px ${glowColor.replace('0.6', '0.1')}`,
@@ -268,9 +277,9 @@ export default function VoiceOrb({ status, onClick, isWebSocket }: VoiceOrbProps
             {isWebSocket ? 'WS_LIVE' : 'REST_API'}
           </span>
         </div>
-      </div>
+      </motion.div>
 
-      <p className="text-xs font-mono-digital text-white/55 mt-6 tracking-widest uppercase">
+      <p className="text-xs font-mono-digital text-white/55 mt-6 tracking-widest uppercase text-center h-8">
         {status === 'STANDBY' && 'System standby. Click core to synthesize.'}
         {status === 'THINKING' && 'Processing cognitive graphs...'}
         {status === 'LISTENING' && 'Streaming voice buffer input...'}

@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import List, Optional
+from typing import List, Dict, Any
 from sqlmodel import Session, create_engine
 from app.models.file import FileMetadata
 from app.services.memory import memory_service

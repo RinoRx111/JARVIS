@@ -1,8 +1,10 @@
 import logging
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
-from sqlalchemy.orm import Session
+from sqlmodel import Session, select
 from langchain_core.messages import HumanMessage
+from app.core.celery_app import celery_app
+import asyncio
 
 from app.core.database import get_db
 from app.api.v1.auth import get_current_user
@@ -16,8 +18,9 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/agents", tags=["Agent Task Management"])
 
-async def run_agent_task_background(task_id: int, user_id: int, prompt: str, db_url: str):
-    """Background task runner to execute LangGraph orchestrator on user prompts."""
+@celery_app.task(name="agents.run_agent_task_background")
+def run_agent_task_background(task_id: int, user_id: int, prompt: str, db_url: str):
+    """Celery background task runner to execute LangGraph orchestrator on user prompts."""
     # Since background tasks run in separate thread/context, we spin up localized sessions
     from sqlalchemy import create_engine
     from sqlalchemy.orm import sessionmaker
@@ -27,7 +30,7 @@ async def run_agent_task_background(task_id: int, user_id: int, prompt: str, db_
     db = SessionLocal()
     
     try:
-        task = db.query(AgentTask).filter(AgentTask.id == task_id).first()
+        task = db.exec(select(AgentTask).where(AgentTask.id == task_id)).first()
         if not task:
             return
             
@@ -39,11 +42,11 @@ async def run_agent_task_background(task_id: int, user_id: int, prompt: str, db_
             "messages": [HumanMessage(content=prompt)],
             "task_type": "planning",
             "user_id": user_id,
-            "db": db,
-            "error_count": 0
+            "error_count": 0,
+            "tool_call_depth": 0
         }
         
-        final_state = await agent_graph.ainvoke(inputs)
+        final_state = asyncio.run(agent_graph.ainvoke(inputs))
         reply = final_state["messages"][-1].content
         
         task.status = "completed"
@@ -51,7 +54,7 @@ async def run_agent_task_background(task_id: int, user_id: int, prompt: str, db_
     except Exception as e:
         logger.error(f"Background task {task_id} failed: {e}")
         task.status = "failed"
-        task.errors = str(e)
+        task.result = f"Error: {str(e)}"
     finally:
         db.commit()
         db.close()
@@ -66,7 +69,7 @@ def create_agent_task(
     """Dispatches a long-running AI task to be executed in the background."""
     new_task = AgentTask(
         user_id=current_user.id,
-        title=payload.title,
+        task_type=payload.task_type,
         description=payload.description,
         status="pending"
     )
@@ -74,13 +77,12 @@ def create_agent_task(
     db.commit()
     db.refresh(new_task)
 
-    # Launch execution background thread
+    # Launch execution background thread via Celery
     from app.core.config import settings
-    background_tasks.add_task(
-        run_agent_task_background,
+    run_agent_task_background.delay(
         new_task.id,
         current_user.id,
-        payload.title + " " + (payload.description or ""),
+        f"Task {payload.task_type}: {payload.description}",
         settings.get_database_url()
     )
 
@@ -93,7 +95,7 @@ def get_task_status(
     current_user: User = Depends(get_current_user)
 ):
     """Retrieve details, execution status, and results of a scheduled background task."""
-    task = db.query(AgentTask).filter(AgentTask.id == task_id, AgentTask.user_id == current_user.id).first()
+    task = db.exec(select(AgentTask).where(AgentTask.id == task_id, AgentTask.user_id == current_user.id)).first()
     if not task:
         raise HTTPException(status_code=404, detail="Task not found")
     return task
@@ -104,7 +106,7 @@ def list_user_tasks(
     current_user: User = Depends(get_current_user)
 ):
     """Lists all background tasks triggered by the current user."""
-    return db.query(AgentTask).filter(AgentTask.user_id == current_user.id).all()
+    return db.exec(select(AgentTask).where(AgentTask.user_id == current_user.id)).all()
 
 @router.get("/logs", response_model=List[AuditLogResponse])
 def get_agent_audit_logs(
@@ -112,4 +114,4 @@ def get_agent_audit_logs(
     current_user: User = Depends(get_current_user)
 ):
     """Retrieves chronological activity audit logs of tool calls executed by the agents."""
-    return db.query(AuditLog).filter(AuditLog.user_id == current_user.id).order_by(AuditLog.created_at.desc()).all()
+    return db.exec(select(AuditLog).where(AuditLog.user_id == current_user.id).order_by(AuditLog.created_at.desc())).all()

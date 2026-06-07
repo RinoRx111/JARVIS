@@ -1,9 +1,5 @@
 import logging
-from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
-
-from app.core.database import get_db
 from app.api.v1.auth import get_current_user
 from app.models.user import User
 from app.services.memory import memory_service

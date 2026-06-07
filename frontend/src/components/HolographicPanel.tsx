@@ -8,6 +8,8 @@ interface HolographicPanelProps extends React.HTMLAttributes<HTMLDivElement> {
   headerActions?: React.ReactNode;
 }
 
+import { motion } from 'framer-motion';
+
 export default function HolographicPanel({
   children,
   title,
@@ -37,13 +39,17 @@ export default function HolographicPanel({
   });
 
   return (
-    <div
+    <motion.div
+      initial={{ opacity: 0, y: 10, scale: 0.98 }}
+      animate={{ opacity: 1, y: 0, scale: 1 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+      whileHover={{ scale: 1.005, boxShadow: '0 0 25px rgba(0, 243, 255, 0.15)' }}
       className={clsx(
         'glass-panel rounded-lg border p-4 relative overflow-hidden transition-all duration-300',
         borderClass,
         className
       )}
-      {...props}
+      {...props as any}
     >
       {/* Visual background grid ticks */}
       <div className="absolute top-0 left-0 w-2 h-2 border-t-2 border-l-2 border-inherit opacity-65" />
@@ -69,6 +75,6 @@ export default function HolographicPanel({
 
       {/* Children content wrapper */}
       <div className="relative z-10">{children}</div>
-    </div>
+    </motion.div>
   );
 }

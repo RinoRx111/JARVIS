@@ -62,7 +62,7 @@ class BrowserService:
                 
                 # Extract page details
                 title = await page.title()
-                html = await page.content()
+                await page.content()
                 
                 # Extract visible text content
                 text_content = await page.evaluate("() => document.body.innerText")
