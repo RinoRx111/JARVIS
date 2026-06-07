@@ -73,15 +73,42 @@ async def synthesize_voice_elevenlabs(text: str) -> Optional[str]:
         logger.error(f"TTS synthesis exception: {e}")
     return None
 
-@router.get("/history")
-async def get_chat_history(
+@router.get("/conversations")
+async def get_conversations(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Fetches the most recent conversation messages for the current user."""
-    conversation = db.exec(select(Conversation).where(
-        Conversation.user_id == current_user.id
-    ).order_by(Conversation.created_at.desc())).first()
+    """Fetches a list of all conversations for the user."""
+    conversations = db.exec(
+        select(Conversation)
+        .where(Conversation.user_id == current_user.id)
+        .order_by(Conversation.created_at.desc())
+    ).all()
+    
+    return [
+        {
+            "id": c.id,
+            "title": c.title,
+            "created_at": c.created_at.isoformat() if c.created_at else None
+        } for c in conversations
+    ]
+
+@router.get("/history")
+async def get_chat_history(
+    conversation_id: Optional[int] = None,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Fetches the messages for a specific conversation, or the most recent if not provided."""
+    if conversation_id:
+        conversation = db.exec(select(Conversation).where(
+            Conversation.id == conversation_id,
+            Conversation.user_id == current_user.id
+        )).first()
+    else:
+        conversation = db.exec(select(Conversation).where(
+            Conversation.user_id == current_user.id
+        ).order_by(Conversation.created_at.desc())).first()
     
     if not conversation:
         return {"conversation_id": None, "messages": []}
@@ -251,26 +278,27 @@ async def websocket_chat_endpoint(websocket: WebSocket, token: str, db: Session 
                 # Send transcribed text back to client first
                 await websocket.send_json({"type": "transcription", "text": transcription})
                 
-                # Run the conversational pipeline with the transcribed text
-                await _ws_process_response(websocket, transcription, user, db)
+                # Run the conversational pipeline with the transcribed text (Voice chunk doesn't carry conversation_id easily in raw bytes, so it defaults to None/new)
+                await _ws_process_response(websocket, transcription, user, db, None)
             
-            # 2. Handlers for text input queries
             elif "text" in data:
                 raw_text = data["text"]
+                conversation_id = None
                 try:
                     import json
                     parsed = json.loads(raw_text)
                     text_input = parsed.get("text", raw_text)
+                    conversation_id = parsed.get("conversation_id")
                 except Exception:
                     text_input = raw_text
-                await _ws_process_response(websocket, text_input, user, db)
+                await _ws_process_response(websocket, text_input, user, db, conversation_id)
                 
     except WebSocketDisconnect:
         logger.info(f"WebSocket connection closed for user ID: {user.id}")
     except Exception as e:
         logger.error(f"WebSocket runtime exception: {e}")
 
-async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db: Session) -> None:
+async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db: Session, conversation_id: Optional[int] = None) -> None:
     """Helper method to run the orchestrator loop, stream tokens, and synthesize speech."""
     if not prompt or len(prompt.strip()) == 0:
         await websocket.send_json({"error": "Message content cannot be empty."})
@@ -280,9 +308,15 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
         return
 
     # Create static conversation for web socket streaming events
-    conversation = db.exec(select(Conversation).where(Conversation.user_id == user.id)).first()
+    conversation = None
+    if conversation_id:
+        conversation = db.exec(select(Conversation).where(
+            Conversation.id == conversation_id,
+            Conversation.user_id == user.id
+        )).first()
+
     if not conversation:
-        conversation = Conversation(user_id=user.id, title="WebSocket Stream")
+        conversation = Conversation(user_id=user.id, title=prompt[:40] if prompt else "New Chat")
         db.add(conversation)
         db.commit()
         db.refresh(conversation)
@@ -294,9 +328,19 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
     except Exception as e:
         logger.warning(f"Failed to queue memory extraction (Celery broker may be offline): {e}")
 
+    # Retrieve prior context logs to inject into state
+    db_messages = db.exec(select(Message).where(Message.conversation_id == conversation.id).order_by(Message.created_at)).all()
+    langchain_history = []
+    for msg in db_messages[-10:]:
+        if msg.role == "user":
+            langchain_history.append(HumanMessage(content=msg.content))
+        elif msg.role == "assistant":
+            langchain_history.append(AIMessage(content=msg.content))
+    langchain_history.append(HumanMessage(content=prompt))
+
     # Invoke agent graph
     inputs = {
-        "messages": [HumanMessage(content=prompt)],
+        "messages": langchain_history,
         "task_type": "general",
         "user_id": user.id,
         "error_count": 0,

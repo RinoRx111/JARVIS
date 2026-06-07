@@ -88,6 +88,8 @@ interface JarvisState {
   updateSystemStats: () => void;
 
   // Chat/Voice State
+  conversations: any[];
+  fetchConversations: () => Promise<void>;
   messages: Message[];
   activeConversationId: number | null;
   isVoiceActive: boolean;
@@ -199,6 +201,15 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
   },
 
   // Chat details
+  conversations: [],
+  fetchConversations: async () => {
+    try {
+      const res = await api.get('/chat/conversations');
+      set({ conversations: res.data });
+    } catch (err) {
+      console.error("Failed to fetch conversations:", err);
+    }
+  },
   messages: [],
   activeConversationId: null,
   isVoiceActive: true,
@@ -219,7 +230,8 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
 
   fetchChatHistory: async (conversationId) => {
     try {
-      const res = await api.get('/chat/history');
+      const url = conversationId ? `/chat/history?conversation_id=${conversationId}` : '/chat/history';
+      const res = await api.get(url);
       if (res.data && res.data.messages) {
         set({
           messages: res.data.messages,
@@ -281,6 +293,8 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
         coreStatus: voice_url ? 'SPEAKING' : 'STANDBY',
         voicePlaybackUrl: voice_url || null
       }));
+
+      get().fetchConversations(); // Update history list in case this was a new chat
 
       if (voice_url) {
         get().addNotification("Voice synthesizer output generated.");

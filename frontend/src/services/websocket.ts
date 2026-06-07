@@ -40,6 +40,7 @@ class WebSocketService {
           // Final response
           store.setCoreStatus(data.voice_url ? 'SPEAKING' : 'STANDBY');
           store.setVoicePlaybackUrl(data.voice_url || null);
+          store.fetchConversations();
           
           if (!data.voice_url && store.isVoiceActive) {
             this.speakLocalTTS(data.text);
@@ -102,7 +103,10 @@ class WebSocketService {
       useJarvisStore.getState().addMessage(userMessage as any);
       const placeholderAssistant = { id: Date.now() + 1, role: 'assistant', content: '', created_at: new Date().toISOString() };
       useJarvisStore.getState().addMessage(placeholderAssistant as any);
-      this.socket.send(JSON.stringify({ text }));
+      this.socket.send(JSON.stringify({ 
+        text, 
+        conversation_id: useJarvisStore.getState().activeConversationId 
+      }));
     } else {
       useJarvisStore.getState().addNotification("Uplink inactive. Cannot stream text.");
       const errorMessage = { id: Date.now(), role: 'system', content: '[ERROR] WebSocket connection is offline. Cannot stream text.', created_at: new Date().toISOString() };
