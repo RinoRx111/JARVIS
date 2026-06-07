@@ -5,14 +5,22 @@ import { Sidebar } from './Sidebar';
 import { ContextPanel } from './ContextPanel';
 import { AuthOverlay } from '../auth/AuthOverlay';
 import { wsService } from '@/services/websocket';
+import { useJarvisStore } from '@/hooks/useJarvisStore';
+
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
+  const token = useJarvisStore((state) => state.token);
+
   useEffect(() => {
-    wsService.init();
-  }, []);
+    if (token) {
+      wsService.init();
+    } else {
+      wsService.close();
+    }
+  }, [token]);
 
   return (
     <>

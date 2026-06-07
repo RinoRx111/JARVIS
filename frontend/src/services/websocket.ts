@@ -11,7 +11,9 @@ class WebSocketService {
     const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
     const wsProtocol = apiBase.startsWith('https') ? 'wss:' : 'ws:';
     const wsHost = apiBase.replace(/^https?:\/\//, '');
-    const wsUrl = `${wsProtocol}//${wsHost}/api/v1/chat/ws?token=local_mode`;
+    const token = useJarvisStore.getState().token;
+    if (!token) return; // Don't connect if not authenticated
+    const wsUrl = `${wsProtocol}//${wsHost}/api/v1/chat/ws?token=${token}`;
     
     this.socket = new WebSocket(wsUrl);
 
