@@ -63,7 +63,7 @@ services:
     volumes:
       - ./backend:/app
       - workspace_data:/tmp/jarvis_workspace
-      - ./groq_key.txt:/app/groq_key.txt
+      - ./groq_key.txt:/groq_key.txt
     env_file:
       - .env
     environment:
@@ -108,7 +108,7 @@ services:
     volumes:
       - ./backend:/app
       - workspace_data:/tmp/jarvis_workspace
-      - ./groq_key.txt:/app/groq_key.txt
+      - ./groq_key.txt:/groq_key.txt
     env_file:
       - .env
     environment:
