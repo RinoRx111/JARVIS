@@ -15,6 +15,7 @@ export interface MessageProps {
 
 export function MessageBubble({ message }: { message: MessageProps }) {
   const isUser = message.role === "user";
+  const isSystem = message.role === "system";
 
   return (
     <motion.div
@@ -30,10 +31,12 @@ export function MessageBubble({ message }: { message: MessageProps }) {
           "flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-md border shadow-sm",
           isUser
             ? "bg-primary text-primary-foreground border-primary shadow-[0_0_10px_rgba(0,216,255,0.3)]"
-            : "bg-white/5 border-white/10 text-white backdrop-blur-sm"
+            : isSystem
+              ? "bg-red-500/10 border-red-500/20 text-red-400"
+              : "bg-white/5 border-white/10 text-white backdrop-blur-sm"
         )}
       >
-        {isUser ? <User size={16} /> : <Bot size={16} />}
+        {isUser ? <User size={16} /> : isSystem ? <Bot size={16} className="text-red-400" /> : <Bot size={16} />}
       </div>
       
       <div
@@ -47,7 +50,9 @@ export function MessageBubble({ message }: { message: MessageProps }) {
             "rounded-2xl px-5 py-3 text-sm leading-relaxed glass-card",
             isUser
               ? "bg-primary/10 text-white rounded-tr-sm border-primary/20"
-              : "bg-white/5 text-gray-200 rounded-tl-sm border-white/10"
+              : isSystem 
+                ? "bg-red-500/10 text-red-200 rounded-tl-sm border-red-500/20"
+                : "bg-white/5 text-gray-200 rounded-tl-sm border-white/10"
           )}
         >
           {/* Simple plain text rendering for now - Markdown parser can be added */}

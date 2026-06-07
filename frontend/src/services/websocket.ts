@@ -45,6 +45,8 @@ class WebSocketService {
           }
         } else if (data.error) {
           store.addNotification(`Uplink warning: ${data.error}`);
+          const errorMessage = { id: Date.now(), role: 'system', content: `[ERROR] ${data.error}`, created_at: new Date().toISOString() };
+          store.addMessage(errorMessage as any);
           store.setCoreStatus('STANDBY');
         }
       } catch (e) {
@@ -87,6 +89,8 @@ class WebSocketService {
       this.socket.send(arrayBuffer);
     } else {
       useJarvisStore.getState().addNotification("Uplink inactive. Cannot stream audio.");
+      const errorMessage = { id: Date.now(), role: 'system', content: '[ERROR] WebSocket connection is offline. Cannot stream audio.', created_at: new Date().toISOString() };
+      useJarvisStore.getState().addMessage(errorMessage as any);
     }
   }
 
@@ -98,6 +102,8 @@ class WebSocketService {
       this.socket.send(JSON.stringify({ text }));
     } else {
       useJarvisStore.getState().addNotification("Uplink inactive. Cannot stream text.");
+      const errorMessage = { id: Date.now(), role: 'system', content: '[ERROR] WebSocket connection is offline. Cannot stream text.', created_at: new Date().toISOString() };
+      useJarvisStore.getState().addMessage(errorMessage as any);
     }
   }
 

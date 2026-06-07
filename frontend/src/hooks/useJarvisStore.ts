@@ -3,7 +3,7 @@ import api from '../services/api';
 
 export interface Message {
   id: number;
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
   voice_url?: string;
   created_at: string;

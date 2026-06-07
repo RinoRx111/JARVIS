@@ -24,6 +24,10 @@ export function ChatWindow() {
     scrollToBottom();
   }, [store.messages]);
 
+  useEffect(() => {
+    wsService.init();
+  }, []);
+
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim()) return;
