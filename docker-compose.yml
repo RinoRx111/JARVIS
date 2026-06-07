@@ -96,6 +96,31 @@ services:
     depends_on:
       - backend
 
+  # --- CELERY ASYNC WORKER ---
+  celery_worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: jarvis_celery_worker
+    restart: always
+    command: celery -A app.core.celery_app worker --loglevel=info --pool=solo
+    volumes:
+      - ./backend:/app
+      - workspace_data:/tmp/jarvis_workspace
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=postgres
+      - CHROMA_HOST=chromadb
+      - CHROMA_PORT=8000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
 volumes:
   pgdata:
     driver: local
