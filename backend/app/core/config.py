@@ -76,6 +76,10 @@ class Settings(BaseSettings):
                 key = f.read().strip()
                 if key and not key.startswith("PASTE_YOUR"):
                     self.GROQ_API_KEY = key
+        # Ensure WORKSPACE_DIR is absolute so subprocess paths resolve correctly
+        if self.WORKSPACE_DIR:
+            self.WORKSPACE_DIR = os.path.abspath(self.WORKSPACE_DIR)
+
         return self
 
     def get_database_url(self) -> str:
