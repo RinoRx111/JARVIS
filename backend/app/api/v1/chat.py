@@ -424,5 +424,6 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
     await websocket.send_json({
         "type": "agent_response",
         "text": agent_reply,
-        "voice_url": voice_url
+        "voice_url": voice_url,
+        "conversation_id": conversation.id
     })

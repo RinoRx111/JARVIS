@@ -42,6 +42,9 @@ class WebSocketService {
           // Final response
           store.setCoreStatus(data.voice_url ? 'SPEAKING' : 'STANDBY');
           store.setVoicePlaybackUrl(data.voice_url || null);
+          if (data.conversation_id) {
+            useJarvisStore.setState({ activeConversationId: data.conversation_id });
+          }
           store.fetchConversations();
           
           if (!data.voice_url && store.isVoiceActive) {
