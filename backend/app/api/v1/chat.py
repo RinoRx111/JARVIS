@@ -93,6 +93,25 @@ async def get_conversations(
         } for c in conversations
     ]
 
+@router.delete("/conversations/{conversation_id}")
+async def delete_conversation(
+    conversation_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Deletes a specific conversation and all its messages."""
+    conversation = db.exec(select(Conversation).where(
+        Conversation.id == conversation_id,
+        Conversation.user_id == current_user.id
+    )).first()
+    
+    if not conversation:
+        raise HTTPException(status_code=404, detail="Conversation not found")
+        
+    db.delete(conversation)
+    db.commit()
+    return {"status": "success"}
+
 @router.get("/history")
 async def get_chat_history(
     conversation_id: Optional[int] = None,

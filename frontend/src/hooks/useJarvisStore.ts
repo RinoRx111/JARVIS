@@ -90,6 +90,7 @@ interface JarvisState {
   // Chat/Voice State
   conversations: any[];
   fetchConversations: () => Promise<void>;
+  deleteConversation: (id: number) => Promise<void>;
   messages: Message[];
   activeConversationId: number | null;
   isVoiceActive: boolean;
@@ -208,6 +209,18 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
       set({ conversations: res.data });
     } catch (err) {
       console.error("Failed to fetch conversations:", err);
+    }
+  },
+  deleteConversation: async (id: number) => {
+    try {
+      await api.delete(`/chat/conversations/${id}`);
+      get().fetchConversations();
+      if (get().activeConversationId === id) {
+        get().startNewChat();
+      }
+      get().addNotification("Conversation deleted.");
+    } catch (err) {
+      console.error("Failed to delete conversation:", err);
     }
   },
   messages: [],

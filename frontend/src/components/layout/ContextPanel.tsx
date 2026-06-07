@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Clock, Database, ChevronRight, ChevronLeft, Terminal, MessageSquare, Plus } from 'lucide-react';
+import { Activity, Clock, Database, ChevronRight, ChevronLeft, Terminal, MessageSquare, Plus, Trash2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Badge } from '@/components/ui/badge';
 import { usePathname } from 'next/navigation';
@@ -71,18 +71,30 @@ export function ContextPanel() {
                     store.conversations.map((conv: any) => (
                       <div 
                         key={conv.id}
-                        onClick={() => store.fetchChatHistory(conv.id)}
                         className={cn(
-                          "p-3 rounded-lg cursor-pointer transition-all border border-transparent",
+                          "p-3 rounded-lg transition-all border border-transparent group relative flex items-center justify-between",
                           store.activeConversationId === conv.id 
                             ? "bg-primary/10 border-primary/30 text-white" 
                             : "hover:bg-white/5 text-muted-foreground hover:text-white"
                         )}
                       >
-                        <h3 className="text-sm font-medium truncate">{conv.title || "New Conversation"}</h3>
-                        <p className="text-[10px] opacity-60 mt-1">
-                          {new Date(conv.created_at).toLocaleDateString()}
-                        </p>
+                        <div className="flex-1 cursor-pointer overflow-hidden" onClick={() => store.fetchChatHistory(conv.id)}>
+                          <h3 className="text-sm font-medium truncate pr-6">{conv.title || "New Conversation"}</h3>
+                          <p className="text-[10px] opacity-60 mt-1">
+                            {new Date(conv.created_at).toLocaleDateString()}
+                          </p>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-6 w-6 absolute right-2 opacity-0 group-hover:opacity-100 text-destructive hover:bg-destructive/10 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            store.deleteConversation(conv.id);
+                          }}
+                        >
+                          <Trash2 size={12} />
+                        </Button>
                       </div>
                     ))
                   )}
