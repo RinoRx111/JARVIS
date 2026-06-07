@@ -70,11 +70,12 @@ def get_claude_client(temperature: float = 0.2) -> BaseChatModel:
 def get_groq_client(temperature: float = 0.7) -> BaseChatModel:
     cache_key = f"groq_{temperature}"
     if cache_key not in _model_cache:
-        if settings.GROQ_API_KEY and ChatGroq:
-            _model_cache[cache_key] = ChatGroq(
+        if settings.GROQ_API_KEY:
+            _model_cache[cache_key] = ChatOpenAI(
                 model="llama-3.3-70b-versatile",
                 temperature=temperature,
-                groq_api_key=settings.GROQ_API_KEY
+                openai_api_key=settings.GROQ_API_KEY,
+                openai_api_base="https://api.groq.com/openai/v1"
             )
         else:
             _model_cache[cache_key] = None
