@@ -129,7 +129,7 @@ interface JarvisState {
   // Memory Center
   memories: UserMemory[];
   fetchMemories: (query?: string) => Promise<void>;
-  addMemory: (content: string) => Promise<void>;
+  addMemory: (fact: string) => Promise<void>;
   deleteMemory: (id: string) => Promise<void>;
 
   // Gmail Center
@@ -447,7 +447,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
 
   addMemory: async (content) => {
     try {
-      await api.post('/memory/add', { content });
+      await api.post('/memory/add', null, { params: { fact: content } });
       get().addNotification(`Fact cached: "${content}"`);
       get().fetchMemories();
     } catch (err) {

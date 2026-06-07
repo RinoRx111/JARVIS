@@ -10,7 +10,9 @@ import { Card, CardContent } from '@/components/ui/card';
 export default function MemoryPage() {
   const store = useJarvisStore();
   const [query, setQuery] = useState('');
+  const [newFact, setNewFact] = useState('');
   const [loading, setLoading] = useState(true);
+  const [adding, setAdding] = useState(false);
 
   useEffect(() => {
     store.fetchMemories().finally(() => setLoading(false));
@@ -20,6 +22,15 @@ export default function MemoryPage() {
     e.preventDefault();
     setLoading(true);
     store.fetchMemories(query).finally(() => setLoading(false));
+  };
+
+  const handleAddFact = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newFact.trim()) return;
+    setAdding(true);
+    await store.addMemory(newFact);
+    setNewFact('');
+    setAdding(false);
   };
 
   return (
@@ -34,22 +45,41 @@ export default function MemoryPage() {
         </div>
       </div>
 
-      <Card className="bg-black/40 border-white/5 backdrop-blur-xl shrink-0">
-        <CardContent className="p-4">
-          <form onSubmit={handleSearch} className="flex gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+      <div className="flex flex-col md:flex-row gap-4 shrink-0">
+        <Card className="bg-black/40 border-white/5 backdrop-blur-xl flex-1">
+          <CardContent className="p-4">
+            <form onSubmit={handleSearch} className="flex gap-4">
+              <div className="relative flex-1">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" size={18} />
+                <Input 
+                  placeholder="Search extracted facts..." 
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  className="pl-10 bg-black/40 border-white/10"
+                />
+              </div>
+              <Button type="submit" variant="glass">Search</Button>
+            </form>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-primary/5 border-primary/20 backdrop-blur-xl flex-1">
+          <CardContent className="p-4">
+            <form onSubmit={handleAddFact} className="flex gap-4">
               <Input 
-                placeholder="Search extracted facts..." 
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                className="pl-10 bg-black/40 border-white/10"
+                placeholder="E.g., I prefer Next.js over React, or My name is Aditi." 
+                value={newFact}
+                onChange={(e) => setNewFact(e.target.value)}
+                className="bg-black/40 border-primary/20 placeholder:text-primary/40"
               />
-            </div>
-            <Button type="submit" variant="glass">Search</Button>
-          </form>
-        </CardContent>
-      </Card>
+              <Button type="submit" variant="default" disabled={adding}>
+                {adding ? <Loader2 className="animate-spin w-4 h-4 mr-2" /> : null}
+                Add Detail
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
 
       <div className="flex-1 flex flex-col gap-4">
         {loading ? (
