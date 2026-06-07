@@ -202,7 +202,16 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
   messages: [],
   activeConversationId: null,
   isVoiceActive: true,
-  setVoiceActive: (active) => set({ isVoiceActive: active }),
+  setVoiceActive: (active) => {
+    set({ isVoiceActive: active });
+    if (!active) {
+      // Immediately stop any playing audio
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel();
+      }
+      set({ voicePlaybackUrl: null });
+    }
+  },
   voicePlaybackUrl: null,
   setVoicePlaybackUrl: (url) => set({ voicePlaybackUrl: url }),
   wsConnected: false,
