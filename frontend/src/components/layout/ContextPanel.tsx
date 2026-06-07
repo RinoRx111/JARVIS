@@ -150,6 +150,7 @@ export function ContextPanel() {
                   </section>
                 </>
               )}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
