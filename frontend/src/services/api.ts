@@ -1,8 +1,12 @@
 import axios from 'axios';
 
-const getBaseURL = () => {
+export const API_URL = (() => {
   const url = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-  return url.endsWith('/api/v1') ? url : `${url}/api/v1`;
+  return url.endsWith('/api/v1') ? url.replace('/api/v1', '') : url;
+})();
+
+const getBaseURL = () => {
+  return API_URL.endsWith('/api/v1') ? API_URL : `${API_URL}/api/v1`;
 };
 
 const api = axios.create({
