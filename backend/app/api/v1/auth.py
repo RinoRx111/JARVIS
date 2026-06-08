@@ -222,5 +222,98 @@ async def google_callback(payload: OAuthLoginRequest, db: Session = Depends(get_
 @router.get("/me", response_model=UserResponse)
 def get_me(current_user: User = Depends(get_current_user)):
     """Retrieve details of the currently authenticated user."""
-    return current_user
+    return UserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        is_active=current_user.is_active,
+        role=current_user.role,
+        created_at=current_user.created_at,
+        preferred_model=current_user.preferred_model,
+        token_limit=current_user.token_limit,
+        ollama_model=current_user.ollama_model,
+        has_openai_key=bool(current_user.openai_api_key),
+        has_anthropic_key=bool(current_user.anthropic_api_key),
+        has_gemini_key=bool(current_user.gemini_api_key),
+        has_groq_key=bool(current_user.groq_api_key)
+    )
 
+from app.schemas.user import UserPreferencesUpdate
+
+async def _validate_api_key(provider: str, key: str) -> bool:
+    """Helper to validate API keys before saving."""
+    if not key:
+        return True
+    try:
+        if provider == "openai":
+            async with httpx.AsyncClient() as client:
+                res = await client.get("https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {key}"})
+                return res.status_code == 200
+        elif provider == "anthropic":
+            async with httpx.AsyncClient() as client:
+                res = await client.get("https://api.anthropic.com/v1/models", headers={"x-api-key": key, "anthropic-version": "2023-06-01"})
+                return res.status_code == 200
+        elif provider == "gemini":
+            async with httpx.AsyncClient() as client:
+                res = await client.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={key}")
+                return res.status_code == 200
+        elif provider == "groq":
+            async with httpx.AsyncClient() as client:
+                res = await client.get("https://api.groq.com/openai/v1/models", headers={"Authorization": f"Bearer {key}"})
+                return res.status_code == 200
+    except Exception as e:
+        logger.error(f"API validation error for {provider}: {e}")
+    return False
+
+@router.put("/me/preferences", response_model=UserResponse)
+async def update_preferences(
+    prefs: UserPreferencesUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Updates user LLM preferences and validates API keys."""
+    # Validate keys before saving
+    if prefs.openai_api_key and prefs.openai_api_key != current_user.openai_api_key:
+        if not await _validate_api_key("openai", prefs.openai_api_key):
+            raise HTTPException(status_code=400, detail="Invalid OpenAI API Key")
+        current_user.openai_api_key = prefs.openai_api_key
+        
+    if prefs.anthropic_api_key and prefs.anthropic_api_key != current_user.anthropic_api_key:
+        if not await _validate_api_key("anthropic", prefs.anthropic_api_key):
+            raise HTTPException(status_code=400, detail="Invalid Anthropic API Key")
+        current_user.anthropic_api_key = prefs.anthropic_api_key
+        
+    if prefs.gemini_api_key and prefs.gemini_api_key != current_user.gemini_api_key:
+        if not await _validate_api_key("gemini", prefs.gemini_api_key):
+            raise HTTPException(status_code=400, detail="Invalid Gemini API Key")
+        current_user.gemini_api_key = prefs.gemini_api_key
+        
+    if prefs.groq_api_key and prefs.groq_api_key != current_user.groq_api_key:
+        if not await _validate_api_key("groq", prefs.groq_api_key):
+            raise HTTPException(status_code=400, detail="Invalid Groq API Key")
+        current_user.groq_api_key = prefs.groq_api_key
+
+    if prefs.preferred_model is not None:
+        current_user.preferred_model = prefs.preferred_model
+    if prefs.token_limit is not None:
+        current_user.token_limit = prefs.token_limit
+    if prefs.ollama_model is not None:
+        current_user.ollama_model = prefs.ollama_model
+
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    
+    return UserResponse(
+        id=current_user.id,
+        email=current_user.email,
+        is_active=current_user.is_active,
+        role=current_user.role,
+        created_at=current_user.created_at,
+        preferred_model=current_user.preferred_model,
+        token_limit=current_user.token_limit,
+        ollama_model=current_user.ollama_model,
+        has_openai_key=bool(current_user.openai_api_key),
+        has_anthropic_key=bool(current_user.anthropic_api_key),
+        has_gemini_key=bool(current_user.gemini_api_key),
+        has_groq_key=bool(current_user.groq_api_key)
+    )

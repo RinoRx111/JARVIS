@@ -45,7 +45,23 @@ export function useWakeWord() {
 
           currentState.setCoreStatus('LISTENING');
           recognition.stop();
-          startFullAudioRecording();
+          
+          // Play confirmation prompt before recording
+          if ('speechSynthesis' in window && currentState.isVoiceActive) {
+            const utterance = new SpeechSynthesisUtterance("Yes, sir?");
+            // Pick a good default voice if possible
+            const voices = window.speechSynthesis.getVoices();
+            const preferredVoice = voices.find(v => v.name.includes("Google UK English Male") || v.name.includes("Daniel")) || voices[0];
+            if (preferredVoice) utterance.voice = preferredVoice;
+            
+            utterance.onend = () => {
+              startFullAudioRecording();
+            };
+            window.speechSynthesis.speak(utterance);
+          } else {
+            // Fallback if TTS not available or muted
+            startFullAudioRecording();
+          }
         }
       }
     };

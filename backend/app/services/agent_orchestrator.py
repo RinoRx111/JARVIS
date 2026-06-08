@@ -44,7 +44,9 @@ User Message: "{last_message}"
 Output ONLY the exact category name.
 """
     try:
-        model = route_llm(task_type="fast", temperature=0.0)
+        with Session(engine) as db:
+            user = db.exec(select(User).where(User.id == state["user_id"])).first()
+        model = route_llm(task_type="fast", temperature=0.0, user=user)
         from langchain_core.messages import HumanMessage
         response = await model.ainvoke([HumanMessage(content=prompt)])
         intent = response.content.strip().lower()
@@ -90,7 +92,9 @@ Output the plan as a JSON array of strings. Example: ["Step 1", "Step 2"]
 Output ONLY the JSON array without any markdown.
 """
     try:
-        model = route_llm(task_type="planning", temperature=0.2)
+        with Session(engine) as db:
+            user = db.exec(select(User).where(User.id == state["user_id"])).first()
+        model = route_llm(task_type="planning", temperature=0.2, user=user)
         response = await model.ainvoke([HumanMessage(content=prompt)])
         
         content = response.content.strip()
@@ -145,8 +149,12 @@ async def call_model_node(state: AgentState) -> Dict[str, Any]:
     # Combine instructions
     full_messages = [SystemMessage(content=system_prompt)] + list(messages)
 
+    # Load user context
+    with Session(engine) as db:
+        user = db.exec(select(User).where(User.id == user_id)).first()
+
     # Route and invoke model
-    model = route_llm(task_type=task_type)
+    model = route_llm(task_type=task_type, user=user)
     
     from app.tools.plugin_manager import plugin_manager
     # Bind standard LangChain tool schemas

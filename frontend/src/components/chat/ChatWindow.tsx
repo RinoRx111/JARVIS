@@ -84,6 +84,19 @@ export function ChatWindow() {
           >
             {store.isVoiceActive ? <Volume2 size={18} /> : <VolumeX size={18} />}
           </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={() => {
+              store.setToken(null);
+              store.setUser(null);
+              localStorage.removeItem('jarvis_token');
+            }}
+            className="text-muted-foreground hover:text-destructive"
+            title="Sign Out"
+          >
+            Sign Out
+          </Button>
           <Button variant="glass" size="sm" onClick={() => store.startNewChat()}>
             <Plus size={16} className="mr-2" />
             New Chat
@@ -148,7 +161,7 @@ export function ChatWindow() {
       </div>
 
       {/* Input Area */}
-      <div className="p-6 md:px-12 lg:px-24 max-w-5xl mx-auto w-full">
+      <div className="p-6 md:px-12 lg:px-24 max-w-5xl mx-auto w-full z-10">
         <div className="relative">
           <form onSubmit={handleSend} className="relative flex items-end gap-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-lg focus-within:border-primary/50 focus-within:shadow-[0_0_15px_rgba(0,216,255,0.1)] transition-all">
             
@@ -191,8 +204,21 @@ export function ChatWindow() {
               </Button>
             )}
           </form>
-          <div className="text-center mt-2">
+          
+          <div className="flex justify-between items-center mt-2 px-1">
             <span className="text-[10px] text-muted-foreground">JARVIS OS v2.0 • AI can make mistakes. Consider verifying important information.</span>
+            
+            {/* Token Counter Widget */}
+            <div className="flex items-center space-x-3 text-[10px] font-mono text-cyan-500/60 uppercase tracking-widest bg-cyan-500/5 px-3 py-1 rounded-full border border-cyan-500/20">
+              <span className="flex items-center" title="Tokens used in current chat">
+                <span className="w-1.5 h-1.5 bg-cyan-400 rounded-full animate-pulse mr-1.5 shadow-[0_0_5px_rgba(0,216,255,0.8)]"></span>
+                Tokens Used: <strong className="text-cyan-400 ml-1">{store.tokenUsage.total.toLocaleString()}</strong>
+              </span>
+              <span className="text-cyan-500/30">|</span>
+              <span className="text-cyan-500/80 cursor-pointer hover:text-cyan-300 transition-colors" onClick={() => store.setActiveTab('settings')} title="View Limit">
+                LIMIT: {store.userPreferences?.token_limit?.toLocaleString() || '8,000'}
+              </span>
+            </div>
           </div>
         </div>
       </div>

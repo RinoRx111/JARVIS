@@ -36,6 +36,14 @@ class WebSocketService {
         } else if (data.type === 'token') {
           store.updateLastMessage(data.token);
           store.setCoreStatus('SPEAKING');
+        } else if (data.type === 'token_usage') {
+          const current = store.tokenUsage;
+          const usage = data.usage;
+          store.setTokenUsage({
+            prompt: current.prompt + (usage.prompt_tokens || 0),
+            completion: current.completion + (usage.completion_tokens || 0),
+            total: current.total + (usage.total_tokens || 0)
+          });
         } else if (data.type === 'status') {
           store.addNotification(data.message);
           if (data.action === 'tool_start' && data.tool_name) {

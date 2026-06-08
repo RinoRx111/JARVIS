@@ -26,6 +26,15 @@ class User(SQLModel, table=True):
     google_oauth_token: Optional[str] = Field(default=None)
     google_refresh_token: Optional[str] = Field(default=None)
 
+    # LLM Settings
+    preferred_model: str = Field(default="gpt-4o")
+    token_limit: int = Field(default=8000)
+    openai_api_key: Optional[str] = Field(default=None)
+    anthropic_api_key: Optional[str] = Field(default=None)
+    gemini_api_key: Optional[str] = Field(default=None)
+    groq_api_key: Optional[str] = Field(default=None)
+    ollama_model: Optional[str] = Field(default=None)
+
     # Timestamps
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
     updated_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

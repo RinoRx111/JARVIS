@@ -1,5 +1,6 @@
 from typing import List
-from sqlalchemy.orm import Session
+from sqlmodel import Session, select
+from app.core.database import engine
 from langchain_core.messages import HumanMessage
 import json
 
@@ -15,7 +16,9 @@ def run_memory_extraction_agent(user_id: int, user_message: str):
     """
     Analyzes the user's message asynchronously to extract persistent factual memories or preferences.
     """
-    model = route_llm(task_type="fast")
+    with Session(engine) as db:
+        user = db.exec(select(User).where(User.id == user_id)).first()
+    model = route_llm(task_type="fast", user=user)
     
     prompt = f"""
 You are the JARVIS Memory Extraction Module.

@@ -384,6 +384,17 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
             langchain_history.append(AIMessage(content=msg.content))
     langchain_history.append(HumanMessage(content=prompt))
 
+    # Basic token estimation and Memory Compression
+    current_tokens = sum(len(m.content) for m in langchain_history) // 4
+    agent_reply = ""
+    
+    if current_tokens > user.token_limit:
+        # Compress history by keeping only the last 2 messages (the new prompt and one previous)
+        langchain_history = langchain_history[-2:]
+        compression_msg = "\n*(System: Conversation history compressed to stay within your token limit. You may increase the limit in Settings.)*\n\n"
+        await websocket.send_json({"type": "token", "token": compression_msg})
+        agent_reply += compression_msg
+
     # Invoke agent graph
     inputs = {
         "messages": langchain_history,
@@ -393,7 +404,6 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
         "tool_call_depth": 0
     }
     
-    agent_reply = ""
     try:
         # Stream events from LangGraph
         async for event in agent_graph.astream_events(inputs, version="v2"):
@@ -408,11 +418,19 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
                     await websocket.send_json({"type": "plan", "plan": state_data["plan"]})
             
             # Stream text tokens directly to client
-            if kind == "on_chat_model_stream":
+            elif kind == "on_chat_model_stream":
                 chunk = event["data"]["chunk"]
                 if hasattr(chunk, "content") and chunk.content and isinstance(chunk.content, str):
                     await websocket.send_json({"type": "token", "token": chunk.content})
                     agent_reply += chunk.content
+                    
+            # Extract token usage
+            elif kind == "on_chat_model_end":
+                output = event.get("data", {}).get("output")
+                if hasattr(output, "response_metadata"):
+                    usage = output.response_metadata.get("token_usage")
+                    if usage:
+                        await websocket.send_json({"type": "token_usage", "usage": usage})
                     
             # Let the UI know when a tool is being called
             elif kind == "on_tool_start":
@@ -426,7 +444,15 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
     except Exception as err:
         import traceback
         logger.error(f"WebSocket graph streaming error: {err}\n{traceback.format_exc()}")
-        agent_reply = f"API Error: {repr(err)}"
+        err_str = str(err).lower()
+        
+        # Proactive Fallback
+        if "rate_limit" in err_str or "quota" in err_str or "auth" in err_str or "api_key" in err_str or "401" in err_str or "429" in err_str or "key" in err_str:
+            fallback_msg = "\n\nSir, the cloud provider has failed or quota is exceeded. Would you like me to switch to the local Ollama model to continue?"
+            await websocket.send_json({"type": "token", "token": fallback_msg})
+            agent_reply += fallback_msg
+        else:
+            agent_reply += f"\nAPI Error: {repr(err)}"
 
     # If the response somehow ended up empty, fallback to the final state message
     if not agent_reply:

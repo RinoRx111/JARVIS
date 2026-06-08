@@ -155,11 +155,16 @@ interface JarvisState {
   createEvent: (summary: string, start: string, end: string, description?: string) => Promise<boolean>;
   fetchSuggestions: () => Promise<void>;
 
-  // Settings
+  // Settings & Preferences
   llmModel: string;
   setLlmModel: (model: string) => void;
   ttsVoice: string;
   setTtsVoice: (voice: string) => void;
+  tokenUsage: { prompt: number; completion: number; total: number };
+  setTokenUsage: (usage: { prompt: number; completion: number; total: number }) => void;
+  userPreferences: any;
+  fetchPreferences: () => Promise<void>;
+  updatePreferences: (prefs: any) => Promise<boolean>;
 }
 
 const speakLocalTTS = (text: string) => {
@@ -618,4 +623,26 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
   setLlmModel: (model) => set({ llmModel: model }),
   ttsVoice: '21m00Tcm4TlvDq8ikWAM',
   setTtsVoice: (voice) => set({ ttsVoice: voice }),
+  tokenUsage: { prompt: 0, completion: 0, total: 0 },
+  setTokenUsage: (usage) => set({ tokenUsage: usage }),
+  userPreferences: null,
+  fetchPreferences: async () => {
+    try {
+      const res = await api.get('/auth/me');
+      set({ userPreferences: res.data });
+    } catch (err) {
+      console.error(err);
+    }
+  },
+  updatePreferences: async (prefs) => {
+    try {
+      await api.put('/auth/me/preferences', prefs);
+      get().fetchPreferences();
+      get().addNotification("User preferences updated.");
+      return true;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  }
 }));
