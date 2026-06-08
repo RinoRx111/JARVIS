@@ -1,6 +1,7 @@
 import os
 # Configure database URL env variable to use a file-based SQLite DB before loading application modules
 os.environ["DATABASE_URL"] = "sqlite:///test.db"
+os.environ["TESTING"] = "True"
 
 import pytest
 from typing import Generator

@@ -20,9 +20,10 @@ async def lifespan(app: FastAPI):
     # Create database tables if they do not exist
     SQLModel.metadata.create_all(engine)
     
-    # Start the background proactive scheduler
-    from app.services.scheduler import start_scheduler
-    start_scheduler()
+    # Start the background proactive scheduler if not testing
+    if os.environ.get("TESTING") != "True":
+        from app.services.scheduler import start_scheduler
+        start_scheduler()
     
     yield
 
