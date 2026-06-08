@@ -39,14 +39,19 @@ def search_web_tool(query: str) -> str:
         try:
             import httpx
             headers = {"content-type": "application/json"}
-            data = {"apiKey": tavily_key, "query": query, "searchDepth": "basic"}
+            data = {"apiKey": tavily_key, "query": query, "searchDepth": "basic", "includeImages": False}
             res = httpx.post("https://api.tavily.com/search", json=data, headers=headers, timeout=10)
             if res.status_code == 200:
                 results = res.json().get("results", [])
+                # Rank by score if available
+                results.sort(key=lambda x: x.get("score", 0), reverse=True)
+                
                 summary = []
-                for r in results[:4]:
-                    summary.append(f"Title: {r['title']}\nURL: {r['url']}\nContent: {r['content']}\n")
+                for idx, r in enumerate(results[:5]):
+                    summary.append(f"[Source {idx+1}] {r.get('title', 'Untitled')}\nURL: {r.get('url', '')}\nContent: {r.get('content', '')}\n")
                 return "\n".join(summary)
+            else:
+                logger.error(f"Tavily search API error: {res.text}")
         except Exception as e:
             logger.error(f"Tavily search failed: {e}")
             
@@ -54,11 +59,11 @@ def search_web_tool(query: str) -> str:
     try:
         from ddgs import DDGS
         with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=4))
+            results = list(ddgs.text(query, max_results=5))
             if results:
                 summary = []
-                for r in results:
-                    summary.append(f"Title: {r.get('title')}\nURL: {r.get('href')}\nContent: {r.get('body')}\n")
+                for idx, r in enumerate(results):
+                    summary.append(f"[Source {idx+1}] {r.get('title')}\nURL: {r.get('href')}\nContent: {r.get('body')}\n")
                 return "\n".join(summary)
             else:
                 return f"No results found for '{query}'."
@@ -257,6 +262,9 @@ def calendar_create_event_tool(summary: str, start_time: str, end_time: str, des
     """Creates a new event in the connected Google Calendar. Times must be in ISO format."""
     pass
 
+from app.tools.desktop import desktop_tools
+from app.tools.reminders import create_reminder_tool, list_reminders_tool, invoke_create_reminder, invoke_list_reminders
+
 # List of LangChain compatible tools for standard Agent LLM bindings
 agent_tools = [
     search_web_tool,
@@ -270,8 +278,10 @@ agent_tools = [
     gmail_list_emails_tool,
     gmail_send_email_tool,
     calendar_list_events_tool,
-    calendar_create_event_tool
-]
+    calendar_create_event_tool,
+    create_reminder_tool,
+    list_reminders_tool
+] + desktop_tools
 
 # Register to PluginManager
 from app.tools.plugin_manager import plugin_manager
@@ -283,3 +293,7 @@ plugin_manager.register_custom_handler("gmail_list_emails_tool", invoke_gmail_li
 plugin_manager.register_custom_handler("gmail_send_email_tool", invoke_gmail_send)
 plugin_manager.register_custom_handler("calendar_list_events_tool", invoke_calendar_list)
 plugin_manager.register_custom_handler("calendar_create_event_tool", invoke_calendar_create)
+
+# Register custom handlers for reminders
+plugin_manager.register_custom_handler("create_reminder_tool", invoke_create_reminder)
+plugin_manager.register_custom_handler("list_reminders_tool", invoke_list_reminders)

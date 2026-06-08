@@ -250,10 +250,11 @@ async def send_chat_message(
         "voice_url": voice_url
     }
 
+from app.services.websocket_manager import manager
+
 @router.websocket("/ws")
 async def websocket_chat_endpoint(websocket: WebSocket, token: str, db: Session = Depends(get_db)):
     """Establish real-time communication for bidirectional AI streams."""
-    await websocket.accept()
     
     # Secure JWT token decoding for WebSocket auth
     payload = decode_token(token)
@@ -270,11 +271,12 @@ async def websocket_chat_endpoint(websocket: WebSocket, token: str, db: Session 
         
     user = db.exec(select(User).where(User.id == int(user_id))).first()
     if not user:
+        await websocket.accept()
         await websocket.send_json({"error": "Authentication failed", "type": "error"})
         await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
         return
 
-    logger.info(f"WebSocket secure stream opened for User {user.id}")
+    await manager.connect(user.id, websocket)
 
     try:
         while True:
@@ -331,9 +333,10 @@ async def websocket_chat_endpoint(websocket: WebSocket, token: str, db: Session 
                 await _ws_process_response(websocket, text_input, user, db, conversation_id)
                 
     except WebSocketDisconnect:
-        logger.info(f"WebSocket connection closed for user ID: {user.id}")
+        manager.disconnect(user.id, websocket)
     except Exception as e:
         logger.error(f"WebSocket runtime exception: {e}")
+        manager.disconnect(user.id, websocket)
 
 async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db: Session, conversation_id: Optional[int] = None) -> None:
     """Helper method to run the orchestrator loop, stream tokens, and synthesize speech."""

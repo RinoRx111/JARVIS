@@ -44,6 +44,16 @@ class WebSocketService {
           }
         } else if (data.type === 'plan') {
           store.setPlan(data.plan);
+        } else if (data.type === 'proactive_alert') {
+          store.addAlert({
+            title: data.title,
+            message: data.message,
+            voice_url: data.voice_url,
+            timestamp: new Date().toISOString()
+          });
+          if (data.voice_url) {
+            store.setVoicePlaybackUrl(data.voice_url);
+          }
         } else if (data.type === 'agent_response') {
           // Final response
           store.setCoreStatus(data.voice_url ? 'SPEAKING' : 'STANDBY');

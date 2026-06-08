@@ -93,7 +93,20 @@ export function ChatWindow() {
             <p className="text-sm font-medium">Awaiting input, Operator.</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-2 max-w-4xl mx-auto">
+          <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+            {/* Proactive Alerts */}
+            {store.alerts && store.alerts.map((alert: any, idx: number) => (
+              <div key={`alert-${idx}`} className="my-4 mx-auto max-w-[90%] border border-yellow-500/30 bg-yellow-500/10 rounded-lg p-4 backdrop-blur-md animate-in fade-in slide-in-from-top-4">
+                <div className="flex items-center gap-2 mb-2 text-yellow-500">
+                  <span className="text-sm font-bold uppercase tracking-wider">{alert.title}</span>
+                </div>
+                <div className="text-sm text-white/90 whitespace-pre-wrap">
+                  {alert.message}
+                </div>
+              </div>
+            ))}
+
+            {/* Conversation Messages */}
             {store.messages.map((msg, idx) => (
               <React.Fragment key={msg.id || idx}>
                 <MessageBubble message={msg as any} />

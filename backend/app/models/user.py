@@ -35,3 +35,4 @@ class User(SQLModel, table=True):
     tasks: List["AgentTask"] = Relationship(back_populates="user")
     audit_logs: List["AuditLog"] = Relationship(back_populates="user")
     files: List["FileMetadata"] = Relationship(back_populates="user")
+    reminders: List["Reminder"] = Relationship(back_populates="user")

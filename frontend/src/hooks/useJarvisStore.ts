@@ -112,6 +112,8 @@ interface JarvisState {
   addToolCallToLastMessage: (toolName: string) => void;
   currentPlan: string[];
   setPlan: (plan: string[]) => void;
+  alerts: any[];
+  addAlert: (alert: any) => void;
 
   // File Management
   files: any[];
@@ -305,6 +307,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
   wsConnected: false,
   wsLog: [],
   currentPlan: [],
+  alerts: [],
 
   fetchChatHistory: async (conversationId) => {
     try {
@@ -359,6 +362,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
   },
 
   setPlan: (plan: string[]) => set({ currentPlan: plan }),
+  addAlert: (alert: any) => set((state) => ({ alerts: [...state.alerts, alert] })),
 
   sendChatMessage: async (content) => {
     const userMessage = { id: Date.now(), role: 'user', content, created_at: new Date().toISOString() } as Message;
