@@ -15,6 +15,7 @@ class MemoryService:
         self.client = None
         self.embeddings_client = None
         self.user_memory_collection = None
+        self.user_profile_collection = None
         self.document_collection = None
         
         # Setup OpenAI client for embeddings
@@ -50,6 +51,10 @@ class MemoryService:
             self.user_memory_collection = self.client.get_or_create_collection(
                 name="user_memories",
                 metadata={"description": "Long-term semantic user facts and preference memories"}
+            )
+            self.user_profile_collection = self.client.get_or_create_collection(
+                name="user_profiles",
+                metadata={"description": "Structured profile attributes for the user"}
             )
             self.document_collection = self.client.get_or_create_collection(
                 name="document_index",
@@ -111,18 +116,65 @@ class MemoryService:
         embedding = self._get_embedding(query)
         results = self.user_memory_collection.query(
             query_embeddings=[embedding],
-            n_results=limit,
+            n_results=limit * 2,
             where={"user_id": user_id}
         )
         
         memories = []
+        import time
+        current_time = time.time()
         if results and "documents" in results and results["documents"]:
             docs = results["documents"][0]
             metas = results["metadatas"][0] if "metadatas" in results else [{}]*len(docs)
             ids = results["ids"][0]
-            for doc, meta, uid in zip(docs, metas, ids):
-                memories.append({"id": uid, "content": doc, "metadata": meta})
+            distances = results.get("distances", [[0]*len(docs)])[0]
+            for doc, meta, uid, dist in zip(docs, metas, ids, distances):
+                if "expires_at" in meta and meta["expires_at"] < current_time:
+                    continue
+                memories.append({"id": uid, "content": doc, "metadata": meta, "relevance": dist})
+                if len(memories) >= limit: break
         return memories
+
+    def add_profile_entry(self, user_id: int, trait: str, metadata: Optional[Dict[str, Any]] = None) -> str:
+        if not self.user_profile_collection: return ""
+        import hashlib
+        content_hash = hashlib.sha256(trait.encode("utf-8")).hexdigest()
+        doc_id = f"profile_{user_id}_{content_hash}"
+        embedding = self._get_embedding(trait)
+        meta = metadata or {}
+        meta["user_id"] = user_id
+        
+        self.user_profile_collection.add(
+            ids=[doc_id],
+            embeddings=[embedding],
+            documents=[trait],
+            metadatas=[meta]
+        )
+        return doc_id
+
+    def search_profile_entries(self, user_id: int, query: str, limit: int = 3) -> List[Dict[str, Any]]:
+        if not self.user_profile_collection: return []
+        embedding = self._get_embedding(query)
+        results = self.user_profile_collection.query(
+            query_embeddings=[embedding],
+            n_results=limit * 2,
+            where={"user_id": user_id}
+        )
+        
+        entries = []
+        import time
+        current_time = time.time()
+        if results and "documents" in results and results["documents"]:
+            docs = results["documents"][0]
+            metas = results["metadatas"][0] if "metadatas" in results else [{}]*len(docs)
+            ids = results["ids"][0]
+            distances = results.get("distances", [[0]*len(docs)])[0]
+            for doc, meta, uid, dist in zip(docs, metas, ids, distances):
+                if "expires_at" in meta and meta["expires_at"] < current_time:
+                    continue
+                entries.append({"id": uid, "content": doc, "metadata": meta, "relevance": dist})
+                if len(entries) >= limit: break
+        return entries
 
     def add_document_chunk(self, file_id: str, chunk_index: int, content: str, metadata: Optional[Dict[str, Any]] = None) -> str:
         """Indexes a text chunk of a PDF/Word file in the vector repository."""

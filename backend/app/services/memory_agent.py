@@ -20,12 +20,16 @@ def run_memory_extraction_agent(user_id: int, user_message: str):
     prompt = f"""
 You are the JARVIS Memory Extraction Module.
 Analyze the following user input and determine if it contains any facts, preferences, or important context that should be saved to long-term memory for future conversations.
+Additionally, extract structured profile attributes if mentioned (e.g., Name, Timezone, Occupation, Preferences, Communication Style, Frequently Used Tools).
 
 User Input: "{user_message}"
 
-Output ONLY a JSON array of strings containing the facts to be saved. Keep facts concise and generalized.
-If there are no facts worth saving, output an empty JSON array: []
-Do not include any other text or markdown block formatting.
+Output ONLY a JSON object with two keys:
+1. "facts": An array of strings containing general facts to be saved.
+2. "profile": An object containing key-value pairs of extracted profile attributes.
+
+Keep facts concise and generalized. If there are no facts or profile traits worth saving, output empty arrays/objects.
+Output ONLY the JSON object. Do not include any markdown block formatting.
 """
     try:
         response = asyncio.run(model.ainvoke([HumanMessage(content=prompt)]))
@@ -37,12 +41,18 @@ Do not include any other text or markdown block formatting.
         if content.endswith("```"):
             content = content[:-3]
             
-        facts: List[str] = json.loads(content.strip())
+        data = json.loads(content.strip())
+        facts = data.get("facts", [])
+        profile = data.get("profile", {})
         
         for fact in facts:
-            # Check length to prevent storing overly large context blocks
-            if fact and len(fact) < 500:
+            if fact and isinstance(fact, str) and len(fact) < 500:
                 memory_service.add_user_memory(user_id=user_id, content=fact)
+                
+        for key, value in profile.items():
+            if value and isinstance(value, str) and len(value) < 500:
+                trait = f"{key}: {value}"
+                memory_service.add_profile_entry(user_id=user_id, trait=trait)
                 
     except Exception as e:
         # Silently fail for background memory extraction to not interrupt the main conversational loop

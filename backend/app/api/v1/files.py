@@ -43,7 +43,9 @@ async def upload_workspace_file(
         file_record = FileMetadata(
             user_id=current_user.id,
             filename=filename,
-            filepath=safe_filepath,
+            file_path=safe_filepath,
+            content_type=file.content_type or "application/octet-stream",
+            file_size_bytes=len(content),
             status="pending"
         )
         db.add(file_record)

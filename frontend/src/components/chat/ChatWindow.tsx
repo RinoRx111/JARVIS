@@ -30,6 +30,7 @@ export function ChatWindow() {
     e.preventDefault();
     if (!input.trim()) return;
     
+    store.setPlan([]);
     wsService.sendTextMessage(input);
     setInput('');
   };
@@ -96,9 +97,30 @@ export function ChatWindow() {
             {store.messages.map((msg, idx) => (
               <React.Fragment key={msg.id || idx}>
                 <MessageBubble message={msg as any} />
-
+                {msg.toolCalls && msg.toolCalls.map((tool, tIdx) => (
+                  <ToolExecutionNode key={tIdx} tool={tool} index={tIdx} />
+                ))}
               </React.Fragment>
             ))}
+            
+            {store.currentPlan && store.currentPlan.length > 0 && (
+              <div className="my-4 ml-12 mr-auto max-w-[80%] border border-white/10 bg-black/40 rounded-lg p-3 backdrop-blur-md animate-in fade-in slide-in-from-bottom-4">
+                <div className="flex items-center gap-2 mb-2 text-primary">
+                  <span className="text-xs font-semibold tracking-wider uppercase">Execution Plan</span>
+                </div>
+                <div className="flex flex-col gap-2">
+                  {store.currentPlan.map((step, idx) => (
+                    <div key={idx} className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <div className="shrink-0 w-4 h-4 rounded-full border border-white/20 flex items-center justify-center text-[9px] mt-0.5">
+                        {idx + 1}
+                      </div>
+                      <span>{step}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
             <div ref={messagesEndRef} />
           </div>
         )}

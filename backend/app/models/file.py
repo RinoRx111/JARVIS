@@ -14,6 +14,7 @@ class FileMetadata(SQLModel, table=True):
     file_path: str
     content_type: str
     file_size_bytes: int
+    status: str = Field(default="pending")
     
     # Timestamps
     created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

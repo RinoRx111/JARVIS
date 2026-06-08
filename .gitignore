@@ -147,7 +147,9 @@ out/
 # Docker / Database Volumes
 pgdata/
 chromadata/
+chroma_persistence/
 docker-volumes/
+static/voice/
 
 # IDE / Operating System files
 .vscode/

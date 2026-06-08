@@ -237,6 +237,12 @@ async def send_chat_message(
         run_memory_extraction_agent.delay(current_user.id, payload.content)
     except Exception as e:
         logger.warning(f"Failed to queue memory extraction (Celery broker may be offline): {e}")
+        logger.info("Falling back to local asyncio execution for memory extraction.")
+        import asyncio
+        async def fallback_memory():
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, run_memory_extraction_agent, current_user.id, payload.content)
+        asyncio.create_task(fallback_memory())
 
     return {
         "conversation_id": conversation.id,
@@ -358,6 +364,12 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
         run_memory_extraction_agent.delay(user.id, prompt)
     except Exception as e:
         logger.warning(f"Failed to queue memory extraction (Celery broker may be offline): {e}")
+        logger.info("Falling back to local asyncio execution for memory extraction.")
+        import asyncio
+        async def fallback_memory_ws():
+            loop = asyncio.get_running_loop()
+            await loop.run_in_executor(None, run_memory_extraction_agent, user.id, prompt)
+        asyncio.create_task(fallback_memory_ws())
 
     # Retrieve prior context logs to inject into state
     db_messages = db.exec(select(Message).where(Message.conversation_id == conversation.id).order_by(Message.created_at)).all()
@@ -383,6 +395,14 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
         # Stream events from LangGraph
         async for event in agent_graph.astream_events(inputs, version="v2"):
             kind = event["event"]
+            
+            if kind == "on_chain_start" and event.get("name") == "planner":
+                await websocket.send_json({"type": "status", "message": "Creating plan..."})
+            
+            elif kind == "on_chain_end" and event.get("name") == "planner":
+                state_data = event.get("data", {}).get("output", {})
+                if isinstance(state_data, dict) and "plan" in state_data:
+                    await websocket.send_json({"type": "plan", "plan": state_data["plan"]})
             
             # Stream text tokens directly to client
             if kind == "on_chat_model_stream":

@@ -39,6 +39,8 @@ def get_current_user(
     user = db.exec(select(User).where(User.id == int(user_id))).first()
     if not user:
         raise credentials_exception
+    if not user.is_active:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive user")
         
     return user
 

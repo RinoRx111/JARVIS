@@ -69,11 +69,11 @@ def ingest_file_in_background(db_url: str, file_record_id: int):
             db.commit()
             db.refresh(file_record)
 
-            if not os.path.exists(file_record.filepath):
-                raise FileNotFoundError(f"Physical file not found at {file_record.filepath}")
+            if not os.path.exists(file_record.file_path):
+                raise FileNotFoundError(f"Physical file not found at {file_record.file_path}")
 
             # Step 1: Extract text
-            raw_text = extract_text_from_file(file_record.filepath)
+            raw_text = extract_text_from_file(file_record.file_path)
             
             # Step 2: Chunk text
             chunks = chunk_text(raw_text)

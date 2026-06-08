@@ -38,6 +38,12 @@ class WebSocketService {
           store.setCoreStatus('SPEAKING');
         } else if (data.type === 'status') {
           store.addNotification(data.message);
+          if (data.message.startsWith('Invoking sub-routine:')) {
+            const toolName = data.message.split('Invoking sub-routine:')[1].trim().replace('...', '');
+            store.addToolCallToLastMessage(toolName);
+          }
+        } else if (data.type === 'plan') {
+          store.setPlan(data.plan);
         } else if (data.type === 'agent_response') {
           // Final response
           store.setCoreStatus(data.voice_url ? 'SPEAKING' : 'STANDBY');

@@ -81,6 +81,20 @@ def get_groq_client(temperature: float = 0.7) -> BaseChatModel:
             _model_cache[cache_key] = None
     return _model_cache[cache_key]
 
+def get_fast_groq_client(temperature: float = 0.0) -> BaseChatModel:
+    cache_key = f"groq_fast_{temperature}"
+    if cache_key not in _model_cache:
+        if settings.GROQ_API_KEY:
+            _model_cache[cache_key] = ChatOpenAI(
+                model="llama-3.1-8b-instant",
+                temperature=temperature,
+                openai_api_key=settings.GROQ_API_KEY,
+                openai_api_base="https://api.groq.com/openai/v1"
+            )
+        else:
+            _model_cache[cache_key] = None
+    return _model_cache[cache_key]
+
 def get_ollama_client(temperature: float = 0.7) -> BaseChatModel:
     cache_key = f"ollama_{temperature}"
     if cache_key not in _model_cache:
@@ -119,6 +133,11 @@ def route_llm(task_type: Optional[str] = None, temperature: float = 0.7) -> Base
             return claude
 
     # 1. Routing by Task Type
+    if task_type == "fast":
+        fast_groq = get_fast_groq_client(temperature)
+        if fast_groq:
+            return fast_groq
+            
     if task_type in ("code", "planning"):
         claude = get_claude_client(temperature)
         if claude:

@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional, TYPE_CHECKING
 from enum import Enum
 from sqlmodel import SQLModel, Field, Relationship

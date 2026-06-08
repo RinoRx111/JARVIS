@@ -1,12 +1,15 @@
 import { create } from 'zustand';
 import api from '../services/api';
 
+import { ToolExecutionProps } from '../components/chat/ToolExecutionNode';
+
 export interface Message {
   id: number;
   role: 'user' | 'assistant' | 'system';
   content: string;
   voice_url?: string;
   created_at: string;
+  toolCalls?: ToolExecutionProps[];
 }
 
 export interface User {
@@ -106,6 +109,9 @@ interface JarvisState {
   startNewChat: () => void;
   addMessage: (msg: Message) => void;
   updateLastMessage: (chunk: string) => void;
+  addToolCallToLastMessage: (toolName: string) => void;
+  currentPlan: string[];
+  setPlan: (plan: string[]) => void;
 
   // File Management
   files: any[];
@@ -171,7 +177,6 @@ const speakLocalTTS = (text: string) => {
 let socket: WebSocket | null = null;
 
 export const useJarvisStore = create<JarvisState>((set, get) => ({
-  // Auth initial state
   // Auth initial state
   token: null,
   user: null,
@@ -299,6 +304,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
   setVoicePlaybackUrl: (url) => set({ voicePlaybackUrl: url }),
   wsConnected: false,
   wsLog: [],
+  currentPlan: [],
 
   fetchChatHistory: async (conversationId) => {
     try {
@@ -316,7 +322,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
   },
 
   startNewChat: () => {
-    set({ messages: [], activeConversationId: null, coreStatus: 'STANDBY' });
+    set({ messages: [], activeConversationId: null, coreStatus: 'STANDBY', currentPlan: [] });
   },
 
   addMessage: (msg: Message) => {
@@ -327,18 +333,32 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
     set((state) => {
       const messages = [...state.messages];
       if (messages.length > 0 && messages[messages.length - 1].role === 'assistant') {
-        messages[messages.length - 1].content += chunk;
-      } else {
-        messages.push({
-          id: Date.now(),
-          role: 'assistant',
-          content: chunk,
-          created_at: new Date().toISOString()
-        } as Message);
+        const lastIndex = messages.length - 1;
+        const lastMsg = messages[lastIndex];
+        let newToolCalls = lastMsg.toolCalls;
+        if (newToolCalls && newToolCalls.some(t => t.status === 'running')) {
+          newToolCalls = newToolCalls.map(t => t.status === 'running' ? { ...t, status: 'success' as const } : t);
+        }
+        messages[lastIndex] = { ...lastMsg, content: lastMsg.content + chunk, toolCalls: newToolCalls };
       }
       return { messages };
     });
   },
+
+  addToolCallToLastMessage: (toolName: string) => {
+    set((state) => {
+      const messages = [...state.messages];
+      if (messages.length > 0) {
+        const lastIndex = messages.length - 1;
+        const lastMsg = messages[lastIndex];
+        const newToolCalls = [...(lastMsg.toolCalls || []), { toolName, status: 'running' as const }];
+        messages[lastIndex] = { ...lastMsg, toolCalls: newToolCalls };
+      }
+      return { messages };
+    });
+  },
+
+  setPlan: (plan: string[]) => set({ currentPlan: plan }),
 
   sendChatMessage: async (content) => {
     const userMessage = { id: Date.now(), role: 'user', content, created_at: new Date().toISOString() } as Message;
