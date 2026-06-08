@@ -10,9 +10,11 @@ import { ToolExecutionNode } from './ToolExecutionNode';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ToolExecutionProps } from './ToolExecutionNode';
+import { useWakeWord } from '@/hooks/useWakeWord';
 
 export function ChatWindow() {
   const store = useJarvisStore();
+  const { isListeningForWakeWord } = useWakeWord();
   const [input, setInput] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -67,6 +69,12 @@ export function ChatWindow() {
           <p className="text-xs text-primary">All systems online</p>
         </div>
         <div className="flex items-center gap-2">
+          {isListeningForWakeWord && (
+            <div className="hidden md:flex items-center gap-2 mr-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
+              <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+              <span className="text-xs text-primary font-medium">Listening for "JARVIS"</span>
+            </div>
+          )}
           <Button 
             variant="ghost" 
             size="sm" 
@@ -186,6 +194,34 @@ export function ChatWindow() {
           <div className="text-center mt-2">
             <span className="text-[10px] text-muted-foreground">JARVIS OS v2.0 • AI can make mistakes. Consider verifying important information.</span>
           </div>
+        </div>
+      </div>
+
+      {/* Agent Presence Floating Panel */}
+      <div className="absolute right-6 top-24 w-64 pointer-events-none z-50 hidden lg:block">
+        <div className={`transition-all duration-500 rounded-xl bg-black/60 backdrop-blur-xl border border-white/10 p-5 shadow-2xl ${isGenerating ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-8'}`}>
+          <div className="flex items-center gap-3 mb-3">
+            <div className={`w-3 h-3 rounded-full ${store.coreStatus === 'THINKING' ? 'bg-yellow-500 animate-pulse shadow-[0_0_10px_rgba(234,179,8,0.5)]' : 'bg-primary animate-pulse shadow-[0_0_10px_rgba(0,216,255,0.5)]'}`} />
+            <span className="text-sm font-semibold tracking-wider uppercase text-white/90">
+              {store.coreStatus === 'THINKING' ? 'PROCESSING' : 'SPEAKING'}
+            </span>
+          </div>
+          
+          {store.currentPlan && store.currentPlan.length > 0 && (
+            <div className="mt-4 pt-4 border-t border-white/10">
+              <span className="text-[10px] uppercase text-muted-foreground font-semibold mb-3 block tracking-widest">Execution Plan</span>
+              <div className="flex flex-col gap-3">
+                {store.currentPlan.map((step, idx) => (
+                  <div key={idx} className="flex items-start gap-3 text-xs text-white/80">
+                    <div className="shrink-0 w-4 h-4 rounded-full bg-primary/20 flex items-center justify-center text-[9px] text-primary mt-0.5">
+                      {idx + 1}
+                    </div>
+                    <span className="leading-snug">{step}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

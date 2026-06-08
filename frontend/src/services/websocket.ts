@@ -38,7 +38,26 @@ class WebSocketService {
           store.setCoreStatus('SPEAKING');
         } else if (data.type === 'status') {
           store.addNotification(data.message);
-          if (data.message.startsWith('Invoking sub-routine:')) {
+          if (data.action === 'tool_start' && data.tool_name) {
+            store.addToolCallToLastMessage(data.tool_name);
+            
+            // Personality Tier: Spoken Narration
+            const currentStatus = useJarvisStore.getState().coreStatus;
+            if (currentStatus !== 'SPEAKING') {
+              let narration = "Executing sub-routine, sir.";
+              if (data.tool_name.includes("search")) narration = "Searching the web now, sir.";
+              else if (data.tool_name.includes("execute") || data.tool_name.includes("python")) narration = "Running your code.";
+              else if (data.tool_name.includes("gmail") || data.tool_name.includes("email")) narration = "Accessing mail servers.";
+              else if (data.tool_name.includes("calendar")) narration = "Checking your calendar.";
+              
+              this.speakLocalTTS(narration);
+            }
+          } else if (data.action === 'tool_end') {
+            const currentStatus = useJarvisStore.getState().coreStatus;
+            if (currentStatus !== 'SPEAKING') {
+              this.speakLocalTTS("Task complete.");
+            }
+          } else if (data.message.startsWith('Invoking sub-routine:')) {
             const toolName = data.message.split('Invoking sub-routine:')[1].trim().replace('...', '');
             store.addToolCallToLastMessage(toolName);
           }

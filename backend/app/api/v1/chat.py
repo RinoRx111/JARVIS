@@ -417,7 +417,11 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
             # Let the UI know when a tool is being called
             elif kind == "on_tool_start":
                 tool_name = event.get("name", "tool")
-                await websocket.send_json({"type": "status", "message": f"Invoking sub-routine: {tool_name}..."})
+                await websocket.send_json({"type": "status", "message": f"Invoking sub-routine: {tool_name}...", "action": "tool_start", "tool_name": tool_name})
+                
+            elif kind == "on_tool_end":
+                tool_name = event.get("name", "tool")
+                await websocket.send_json({"type": "status", "message": f"Completed sub-routine: {tool_name}", "action": "tool_end", "tool_name": tool_name})
                 
     except Exception as err:
         import traceback
