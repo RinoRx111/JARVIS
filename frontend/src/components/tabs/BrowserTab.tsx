@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { Play, Loader2, Globe } from 'lucide-react';
 import HolographicPanel from '../HolographicPanel';

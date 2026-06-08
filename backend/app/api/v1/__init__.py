@@ -7,6 +7,7 @@ from app.api.v1.memory import router as memory_router
 from app.api.v1.gmail import router as gmail_router
 from app.api.v1.calendar import router as calendar_router
 from app.api.v1.browser import router as browser_router
+from app.api.v1.analytics import router as analytics_router
 
 router = APIRouter()
 router.include_router(auth_router)
@@ -17,4 +18,4 @@ router.include_router(memory_router)
 router.include_router(gmail_router)
 router.include_router(calendar_router)
 router.include_router(browser_router)
-
+router.include_router(analytics_router)

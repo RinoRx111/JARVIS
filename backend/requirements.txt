@@ -67,3 +67,5 @@ plyer>=2.1.0
 pyperclip>=1.8.2
 pycaw>=20230407
 comtypes>=1.2.0
+tenacity==8.3.0
+slowapi==0.1.9

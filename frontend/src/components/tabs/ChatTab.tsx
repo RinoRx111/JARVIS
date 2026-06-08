@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Terminal, Plus, Volume2, VolumeX, Mic, MicOff, Send } from 'lucide-react';
 import clsx from 'clsx';

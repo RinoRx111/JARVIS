@@ -4,7 +4,7 @@ import api from '../services/api';
 import { ToolExecutionProps } from '../components/chat/ToolExecutionNode';
 
 export interface Message {
-  id: number;
+  id: number | string;
   role: 'user' | 'assistant' | 'system';
   content: string;
   voice_url?: string;
@@ -15,6 +15,8 @@ export interface Message {
 export interface User {
   id: number;
   email: string;
+  full_name?: string;
+  nickname?: string;
   role: 'admin' | 'user';
   is_active: boolean;
   google_refresh_token?: string;
@@ -80,8 +82,8 @@ interface JarvisState {
   checkAuth: () => Promise<boolean>;
 
   // Navigation
-  activeTab: 'dashboard' | 'chat' | 'agents' | 'browser' | 'gmail' | 'calendar' | 'memory' | 'settings';
-  setActiveTab: (tab: 'dashboard' | 'chat' | 'agents' | 'browser' | 'gmail' | 'calendar' | 'memory' | 'settings') => void;
+  activeTab: 'dashboard' | 'chat' | 'agents' | 'browser' | 'gmail' | 'calendar' | 'memory' | 'settings' | 'profile' | 'analytics';
+  setActiveTab: (tab: 'dashboard' | 'chat' | 'agents' | 'browser' | 'gmail' | 'calendar' | 'memory' | 'settings' | 'profile' | 'analytics') => void;
 
   // System Stats
   cpuUsage: number;
@@ -165,6 +167,19 @@ interface JarvisState {
   userPreferences: any;
   fetchPreferences: () => Promise<void>;
   updatePreferences: (prefs: any) => Promise<boolean>;
+  
+  // Local Models
+  localModels: string[];
+  fetchLocalModels: () => Promise<void>;
+  
+  // Agent Config
+  agentConfig: any;
+  fetchAgentConfig: () => Promise<void>;
+  updateAgentConfig: (config: any) => Promise<boolean>;
+
+  // Analytics
+  analyticsData: any;
+  fetchAnalytics: () => Promise<void>;
 }
 
 const speakLocalTTS = (text: string) => {
@@ -370,8 +385,8 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
   addAlert: (alert: any) => set((state) => ({ alerts: [...state.alerts, alert] })),
 
   sendChatMessage: async (content) => {
-    const userMessage = { id: Date.now(), role: 'user', content, created_at: new Date().toISOString() } as Message;
-    const placeholderAssistant = { id: Date.now() + 1, role: 'assistant', content: '[Thinking...]', created_at: new Date().toISOString() } as Message;
+    const userMessage = { id: crypto.randomUUID(), role: 'user', content, created_at: new Date().toISOString() } as Message;
+    const placeholderAssistant = { id: crypto.randomUUID(), role: 'assistant', content: '[Thinking...]', created_at: new Date().toISOString() } as Message;
     set({ 
       messages: [...get().messages, userMessage, placeholderAssistant],
       coreStatus: 'THINKING' 
@@ -386,7 +401,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
 
       const { response: replyText, voice_url, conversation_id } = response.data;
       
-      const assistantMessage = { id: Date.now() + 2, role: 'assistant', content: replyText, voice_url, created_at: new Date().toISOString() } as Message;
+      const assistantMessage = { id: crypto.randomUUID(), role: 'assistant', content: replyText, voice_url, created_at: new Date().toISOString() } as Message;
 
       set((state) => ({
         messages: [...state.messages.slice(0, -1), assistantMessage],
@@ -643,6 +658,57 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
     } catch (err) {
       console.error(err);
       return false;
+    }
+  },
+  
+  localModels: [],
+  fetchLocalModels: async () => {
+    try {
+      const res = await api.get('/auth/models/local');
+      if (res.data && res.data.models) {
+        set({ localModels: res.data.models });
+      }
+    } catch (err) {
+      console.error("Failed to fetch local models:", err);
+    }
+  },
+
+  agentConfig: null,
+  fetchAgentConfig: async () => {
+    try {
+      const res = await api.get('/agents/config');
+      set({ agentConfig: res.data });
+    } catch (err) {
+      console.error(err);
+    }
+  },
+  updateAgentConfig: async (config) => {
+    try {
+      await api.put('/agents/config', config);
+      get().fetchAgentConfig();
+      get().addNotification("Agent marketplace configuration updated.");
+      return true;
+    } catch (err) {
+      console.error(err);
+      return false;
+    }
+  },
+
+  analyticsData: null,
+  fetchAnalytics: async () => {
+    try {
+      const [tokenRes, toolRes] = await Promise.all([
+        api.get('/analytics/tokens'),
+        api.get('/analytics/tools')
+      ]);
+      set({ 
+        analyticsData: {
+          tokens: tokenRes.data,
+          tools: toolRes.data
+        }
+      });
+    } catch (err) {
+      console.error(err);
     }
   }
 }));

@@ -5,6 +5,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from sqlmodel import SQLModel
 
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+
 from app.core.config import settings
 from app.core.database import engine
 from app.api.v1 import router as api_v1_router
@@ -31,8 +36,13 @@ app = FastAPI(
     title="JARVIS - AI Operating System",
     description="Backend API gateway for JARVIS AI Operating System",
     version="1.0.0",
-    lifespan=lifespan
 )
+
+# Initialize Rate Limiter
+limiter = Limiter(key_func=get_remote_address, default_limits=["100/minute"])
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+app.add_middleware(SlowAPIMiddleware)
 
 # CORS middleware configuration
 app.add_middleware(

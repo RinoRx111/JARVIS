@@ -25,6 +25,37 @@ def _get_safe_path(filepath: str) -> str:
 
 # --- AUTOMATION TOOLS ---
 
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+def _execute_tavily_search(query: str, tavily_key: str) -> str:
+    import httpx
+    headers = {"content-type": "application/json"}
+    data = {"apiKey": tavily_key, "query": query, "searchDepth": "basic", "includeImages": False}
+    res = httpx.post("https://api.tavily.com/search", json=data, headers=headers, timeout=10)
+    if res.status_code == 200:
+        results = res.json().get("results", [])
+        results.sort(key=lambda x: x.get("score", 0), reverse=True)
+        summary = []
+        for idx, r in enumerate(results[:5]):
+            summary.append(f"[Source {idx+1}] {r.get('title', 'Untitled')}\nURL: {r.get('url', '')}\nContent: {r.get('content', '')}\n")
+        return "\n".join(summary)
+    else:
+        raise Exception(f"Tavily search API error: {res.text}")
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=10))
+def _execute_ddg_search(query: str) -> str:
+    from duckduckgo_search import DDGS
+    with DDGS() as ddgs:
+        results = list(ddgs.text(query, max_results=5))
+        if results:
+            summary = []
+            for idx, r in enumerate(results):
+                summary.append(f"[Source {idx+1}] {r.get('title')}\nURL: {r.get('href')}\nContent: {r.get('body')}\n")
+            return "\n".join(summary)
+        else:
+            return f"No results found for '{query}'."
+
 @tool
 def search_web_tool(query: str) -> str:
     """
@@ -32,43 +63,19 @@ def search_web_tool(query: str) -> str:
     Input should be a search string query.
     """
     logger.info(f"Executing web search for: '{query}'")
-    # For local running, we use a fallback structured mock or GNews/Tavily HTTP query
-    # We attempt Tavily search if Tavily API key is available, else mock search
+    
     tavily_key = os.getenv("TAVILY_API_KEY")
     if tavily_key:
         try:
-            import httpx
-            headers = {"content-type": "application/json"}
-            data = {"apiKey": tavily_key, "query": query, "searchDepth": "basic", "includeImages": False}
-            res = httpx.post("https://api.tavily.com/search", json=data, headers=headers, timeout=10)
-            if res.status_code == 200:
-                results = res.json().get("results", [])
-                # Rank by score if available
-                results.sort(key=lambda x: x.get("score", 0), reverse=True)
-                
-                summary = []
-                for idx, r in enumerate(results[:5]):
-                    summary.append(f"[Source {idx+1}] {r.get('title', 'Untitled')}\nURL: {r.get('url', '')}\nContent: {r.get('content', '')}\n")
-                return "\n".join(summary)
-            else:
-                logger.error(f"Tavily search API error: {res.text}")
+            return _execute_tavily_search(query, tavily_key)
         except Exception as e:
-            logger.error(f"Tavily search failed: {e}")
+            logger.error(f"Tavily search failed after retries: {e}")
             
     # Fallback to free DuckDuckGo search
     try:
-        from ddgs import DDGS
-        with DDGS() as ddgs:
-            results = list(ddgs.text(query, max_results=5))
-            if results:
-                summary = []
-                for idx, r in enumerate(results):
-                    summary.append(f"[Source {idx+1}] {r.get('title')}\nURL: {r.get('href')}\nContent: {r.get('body')}\n")
-                return "\n".join(summary)
-            else:
-                return f"No results found for '{query}'."
+        return _execute_ddg_search(query)
     except Exception as e:
-        logger.error(f"DuckDuckGo search failed: {e}")
+        logger.error(f"DuckDuckGo search failed after retries: {e}")
         return f"Search result for '{query}': Error accessing internet search. ({e})"
 
 @tool
@@ -297,3 +304,6 @@ plugin_manager.register_custom_handler("calendar_create_event_tool", invoke_cale
 # Register custom handlers for reminders
 plugin_manager.register_custom_handler("create_reminder_tool", invoke_create_reminder)
 plugin_manager.register_custom_handler("list_reminders_tool", invoke_list_reminders)
+
+# Import integrations to trigger their registration
+import app.tools.integrations

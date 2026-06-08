@@ -1,0 +1,431 @@
+<USER_REQUEST>
+i want you to follow this roadmap and make JARVIS a fully usable thing. [🚀 JARVIS AI OS - Complete Development Roadmap
+
+This roadmap combines:
+
+All known bugs
+All architecture issues
+All missing features
+All security concerns
+All UX improvements
+All future scalability upgrades
+
+Ordered by dependency so you don't waste time building advanced features on top of broken foundations.
+
+🔴 PHASE 1 — CRITICAL STABILITY FIXES
+
+Goal: Make the current system reliable.
+
+1.1 LangGraph Recursion Loop
+Fix
+Identify infinite loops
+Add END nodes
+Add loop detection
+Add execution timeout
+Add retry limits
+Priority
+
+⭐⭐⭐⭐⭐
+
+1.2 Fix Stop Generation
+
+Current:
+
+Stop Button
+↓
+Disconnect WebSocket
+↓
+Reconnect
+
+Replace with:
+
+Cancel Generation Event
+
+Priority:
+⭐⭐⭐⭐⭐
+
+1.3 Redis + Celery
+
+Fix:
+
+Install Redis
+Configure Celery
+Add fallback mode
+Remove silent failures
+
+Priority:
+⭐⭐⭐⭐⭐
+
+1.4 ChromaDB
+
+Fix:
+
+Install ChromaDB
+Remove MockChromaClient
+Enable persistent memory
+
+Priority:
+⭐⭐⭐⭐⭐
+
+1.5 Docker Sandbox
+
+Fix:
+
+Docker integration
+Safe code execution
+Resource limits
+
+Priority:
+⭐⭐⭐⭐⭐
+
+1.6 Audit Logging
+
+Fix:
+
+Success / Failed statuses
+Error tracking
+Stack traces
+
+Priority:
+⭐⭐⭐⭐
+
+1.7 Search System
+
+Fix:
+
+Replace duckduckgo_search
+Upgrade to ddgs
+Add retries
+Add Tavily support
+
+Priority:
+⭐⭐⭐⭐
+
+1.8 Google OAuth
+
+Fix:
+
+Gmail
+Calendar
+Drive
+
+Priority:
+⭐⭐⭐⭐⭐
+
+🟠 PHASE 2 — ARCHITECTURE CLEANUP
+
+Goal: Make code maintainable.
+
+2.1 Refactor websocket.ts
+
+Split into:
+
+WebSocketManager
+VoiceManager
+ToolManager
+NotificationManager
+PlanManager
+2.2 SQLModel Migration
+
+Replace:
+
+session.query()
+
+with:
+
+session.exec()
+2.3 Datetime Migration
+
+Replace:
+
+datetime.utcnow()
+
+with:
+
+datetime.now(UTC)
+2.4 UUID System
+
+Replace:
+
+Date.now()
+
+with:
+
+crypto.randomUUID()
+2.5 Structured Tool Events
+
+Replace string parsing.
+
+Use:
+
+{
+  "type":"tool_start"
+}
+
+events.
+
+2.6 TTS Queue
+
+Prevent speech interruption.
+
+2.7 Mic Button Integration
+
+Currently non-functional.
+
+Connect:
+<truncated 2692 bytes>
+bile Responsive Design
+Accessibility
+📊 PHASE 14 — ANALYTICS
+Token Usage
+
+Optional limits only.
+
+Cost Tracking
+Model Usage Stats
+Agent Usage Stats
+Tool Usage Stats
+🔐 PHASE 15 — SECURITY
+Encrypted API Keys
+OAuth Security
+Input Validation
+Rate Limiting
+Permission System
+Audit Logs
+Secret Management
+🚀 PHASE 16 — PRODUCTION READINESS
+PostgreSQL
+Redis
+Celery
+ChromaDB
+Docker
+Monitoring
+Loguru
+LangSmith
+OpenTelemetry
+CI/CD
+GitHub Actions
+Deployment
+Docker Compose
+VPS
+Cloud Deployment
+Final Build Order
+Phase 1  → Critical Fixes
+Phase 2  → Architecture Cleanup
+Phase 3  → User System
+Phase 4  → Multi-Model Support
+Phase 5  → Local Models
+Phase 6  → Intelligence
+Phase 7  → Account Integrations
+Phase 8  → Agent Ecosystem
+Phase 9  → Real World Actions
+Phase 10 → Knowledge System
+Phase 11 → Voice Assistant
+Phase 12 → Automation
+Phase 13 → Premium UI/UX
+Phase 14 → Analytics
+Phase 15 → Security
+Phase 16 → Production Readiness
+
+This order ensures you don't build advanced AI features on top of unstable infrastructure and gives you a path from your current JARVIS prototype to a full AI Operating System.]
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-08T17:02:41+05:30.
+
+The user's current state is as follows:
+Other open documents:
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\e2e\init.spec.ts (LANGUAGE_TYPESCRIPT)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\app\tasks\page.tsx (LANGUAGE_TSX)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\main.js (LANGUAGE_JAVASCRIPT)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\app\services\file_ingest.py (LANGUAGE_PYTHON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\app\models\reminder.py (LANGUAGE_PYTHON)
+</ADDITIONAL_METADATA>
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Gemini 3.1 Pro (High). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>
+
+<USER_REQUEST>
+/grill-me 
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-08T17:04:46+05:30.
+
+The user's current state is as follows:
+Other open documents:
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\tests\conftest.py (LANGUAGE_PYTHON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\app\main.py (LANGUAGE_PYTHON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\components\tabs\ProfileTab.tsx (LANGUAGE_TSX)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\scratch\migrate_db.py (LANGUAGE_PYTHON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\components\auth\AuthOverlay.test.tsx (LANGUAGE_TSX)
+
+The user has mentioned some items in the form @[ITEM]. Here is extra information about the items that were mentioned by the user, in the order that they appear:
+
+/grill-me is a [Slash Command]:
+<GRILL_ME>
+The user has requested that you interview them about every aspect of their task until you've reach a shared understanding. Walk down each branch of the design tree, resolving dependencies between decisions one-by-one. For each question, provide your recommended answer.
+
+Guidelines:
+- Ask the questions one at a time.
+- If a question can be answered by exploring the codebase, explore the codebase instead.
+- Use the ask_question tool for asking questions to the user.
+</GRILL_ME>
+</ADDITIONAL_METADATA>
+
+<USER_REQUEST>
+GOOGLE_CLIENT_ID=your_client_id_here
+
+GOOGLE_CLIENT_SECRET=your_client_secret_here
+
+GOOGLE_REDIRECT_URI=http://localhost:3000/auth/callback  what does these mean
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-08T17:13:44+05:30.
+
+The user's current state is as follows:
+Other open documents:
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\tests\test_auth.py (LANGUAGE_PYTHON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\Dockerfile (LANGUAGE_DOCKERFILE)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\app\tools\desktop.py (LANGUAGE_PYTHON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\components\auth\AuthOverlay.tsx (LANGUAGE_TSX)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\app\auth\callback\page.tsx (LANGUAGE_TSX)
+</ADDITIONAL_METADATA>
+
+<USER_REQUEST>
+is google auth paid, if yes then is there any alternative
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-08T17:17:58+05:30.
+
+The user's current state is as follows:
+Other open documents:
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\app\models\file.py (LANGUAGE_PYTHON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\app\profile\page.tsx (LANGUAGE_TSX)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\app\email\page.tsx (LANGUAGE_TSX)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\components\tabs\AgentsTab.tsx (LANGUAGE_TSX)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\utils\markdownParser.tsx (LANGUAGE_TSX)
+</ADDITIONAL_METADATA>
+
+<USER_REQUEST>
+i want jarvis to access google maps too
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-08T17:21:55+05:30.
+
+The user's current state is as follows:
+Other open documents:
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\app\tools\plugin_manager.py (LANGUAGE_PYTHON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\services\websocket.ts (LANGUAGE_TYPESCRIPT)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\app\models\file.py (LANGUAGE_PYTHON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\app\profile\page.tsx (LANGUAGE_TSX)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\app\email\page.tsx (LANGUAGE_TSX)
+</ADDITIONAL_METADATA>
+
+<USER_REQUEST>
+this is clint id: <REDACTED> 
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-08T17:26:18+05:30.
+
+The user's current state is as follows:
+Other open documents:
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\app\globals.css (LANGUAGE_CSS)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\app\services\websocket_manager.py (LANGUAGE_PYTHON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\app\services\scheduler.py (LANGUAGE_PYTHON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\docker-compose.yml (LANGUAGE_YAML)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\playwright.config.ts (LANGUAGE_TYPESCRIPT)
+</ADDITIONAL_METADATA>
+
+<USER_REQUEST>
+where do i find these
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-08T17:26:29+05:30.
+
+The user's current state is as follows:
+Other open documents:
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\tsconfig.json (LANGUAGE_UNSPECIFIED)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\tailwind.config.js (LANGUAGE_JAVASCRIPT)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\package.json (LANGUAGE_JSON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\app\tools\reminders.py (LANGUAGE_PYTHON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\.env.example (LANGUAGE_UNSPECIFIED)
+</ADDITIONAL_METADATA>
+
+<USER_REQUEST>
+where do i find these : https://www.googleapis.com/auth/userinfo.email
+
+https://www.googleapis.com/auth/gmail.modify
+
+https://www.googleapis.com/auth/calendar
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-08T17:27:08+05:30.
+
+The user's current state is as follows:
+Other open documents:
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\tailwind.config.js (LANGUAGE_JAVASCRIPT)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\package.json (LANGUAGE_JSON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\app\tools\reminders.py (LANGUAGE_PYTHON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\.env.example (LANGUAGE_UNSPECIFIED)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\app\settings\page.tsx (LANGUAGE_TSX)
+</ADDITIONAL_METADATA>
+
+<USER_REQUEST>
+
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-08T17:30:21+05:30.
+
+The user's current state is as follows:
+Other open documents:
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\components\tabs\AgentsTab.tsx (LANGUAGE_TSX)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\utils\markdownParser.tsx (LANGUAGE_TSX)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\JARVIS_local.bat (LANGUAGE_UNSPECIFIED)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\JARVIS.bat (LANGUAGE_UNSPECIFIED)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\app\layout.tsx (LANGUAGE_TSX)
+</ADDITIONAL_METADATA>
+
+<USER_REQUEST>
+
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-08T17:32:46+05:30.
+
+The user's current state is as follows:
+Other open documents:
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\components\TopHeader.tsx (LANGUAGE_TSX)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\tsconfig.json (LANGUAGE_UNSPECIFIED)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\tailwind.config.js (LANGUAGE_JAVASCRIPT)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\package.json (LANGUAGE_JSON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\app\tools\reminders.py (LANGUAGE_PYTHON)
+</ADDITIONAL_METADATA>
+
+<USER_REQUEST>
+<REDACTED>  -  clint secrete
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-08T17:34:27+05:30.
+
+The user's current state is as follows:
+Other open documents:
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\app\tools\reminders.py (LANGUAGE_PYTHON)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\.env.example (LANGUAGE_UNSPECIFIED)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\app\settings\page.tsx (LANGUAGE_TSX)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\app\files\page.tsx (LANGUAGE_TSX)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\components\tabs\GmailTab.tsx (LANGUAGE_TSX)
+</ADDITIONAL_METADATA>
+
+<USER_REQUEST>
+yea move to pase 2
+</USER_REQUEST>
+<ADDITIONAL_METADATA>
+The current local time is: 2026-06-08T17:35:34+05:30.
+
+The user's current state is as follows:
+Other open documents:
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\.env.example (LANGUAGE_UNSPECIFIED)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\app\settings\page.tsx (LANGUAGE_TSX)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\app\files\page.tsx (LANGUAGE_TSX)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\frontend\src\components\tabs\GmailTab.tsx (LANGUAGE_TSX)
+- c:\Users\aditi\OneDrive\Desktop\JARVIS\backend\tests\conftest.py (LANGUAGE_PYTHON)
+</ADDITIONAL_METADATA>
+

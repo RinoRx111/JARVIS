@@ -1,6 +1,6 @@
 import logging
 import httpx
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from app.core.config import settings
@@ -137,7 +137,7 @@ class GoogleWorkspaceService:
             raise PermissionError("User is not authenticated with Google OAuth")
 
         headers = {"Authorization": f"Bearer {token}"}
-        time_min = datetime.utcnow().isoformat() + "Z"
+        time_min = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
         
         async with httpx.AsyncClient() as client:
             url = f"{self.calendar_base_url}/calendars/primary/events?maxResults={limit}&timeMin={time_min}&singleEvents=true&orderBy=startTime"

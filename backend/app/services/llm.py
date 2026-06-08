@@ -20,6 +20,7 @@ except ImportError:
 
 from app.core.config import settings
 from app.models.user import User
+from app.core.crypto import decrypt_key
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,8 @@ def get_openai_client(user: Optional[User] = None, temperature: float = 0.7) -> 
     
     if cache_key not in _model_cache:
         # Prioritize user API key
-        api_key = user.openai_api_key if user and user.openai_api_key else settings.OPENAI_API_KEY
+        user_key = decrypt_key(user.openai_api_key) if user and user.openai_api_key else None
+        api_key = user_key if user_key else settings.OPENAI_API_KEY
         if api_key:
             _model_cache[cache_key] = ChatOpenAI(
                 model="gpt-4o",
@@ -48,7 +50,8 @@ def get_gemini_client(user: Optional[User] = None, temperature: float = 0.5) -> 
     cache_key = f"gemini_{user_id}_{temperature}"
     
     if cache_key not in _model_cache:
-        api_key = user.gemini_api_key if user and user.gemini_api_key else settings.GEMINI_API_KEY
+        user_key = decrypt_key(user.gemini_api_key) if user and user.gemini_api_key else None
+        api_key = user_key if user_key else settings.GEMINI_API_KEY
         if api_key:
             _model_cache[cache_key] = ChatOpenAI(
                 model="gemini-2.5-pro",
@@ -65,7 +68,8 @@ def get_claude_client(user: Optional[User] = None, temperature: float = 0.2) -> 
     cache_key = f"claude_{user_id}_{temperature}"
     
     if cache_key not in _model_cache:
-        api_key = user.anthropic_api_key if user and user.anthropic_api_key else settings.ANTHROPIC_API_KEY
+        user_key = decrypt_key(user.anthropic_api_key) if user and user.anthropic_api_key else None
+        api_key = user_key if user_key else settings.ANTHROPIC_API_KEY
         if api_key:
             _model_cache[cache_key] = ChatAnthropic(
                 model="claude-3-5-sonnet-20240620",
@@ -81,7 +85,8 @@ def get_groq_client(user: Optional[User] = None, temperature: float = 0.7) -> Ba
     cache_key = f"groq_{user_id}_{temperature}"
     
     if cache_key not in _model_cache:
-        api_key = user.groq_api_key if user and user.groq_api_key else settings.GROQ_API_KEY
+        user_key = decrypt_key(user.groq_api_key) if user and user.groq_api_key else None
+        api_key = user_key if user_key else settings.GROQ_API_KEY
         if api_key:
             _model_cache[cache_key] = ChatOpenAI(
                 model="llama-3.3-70b-versatile",
@@ -98,7 +103,8 @@ def get_fast_groq_client(user: Optional[User] = None, temperature: float = 0.0) 
     cache_key = f"groq_fast_{user_id}_{temperature}"
     
     if cache_key not in _model_cache:
-        api_key = user.groq_api_key if user and user.groq_api_key else settings.GROQ_API_KEY
+        user_key = decrypt_key(user.groq_api_key) if user and user.groq_api_key else None
+        api_key = user_key if user_key else settings.GROQ_API_KEY
         if api_key:
             _model_cache[cache_key] = ChatOpenAI(
                 model="llama-3.1-8b-instant",

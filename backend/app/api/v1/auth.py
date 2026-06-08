@@ -10,6 +10,7 @@ from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_token
 from app.models.user import User, Role
 from app.schemas.user import UserCreate, UserLogin, UserResponse, Token, OAuthLoginRequest
+from app.core.crypto import encrypt_key
 
 logger = logging.getLogger(__name__)
 
@@ -134,18 +135,68 @@ def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
 @router.get("/google/url")
 def get_google_auth_url():
     """Generates the Google OAuth login url for the frontend client."""
+    import urllib.parse
+    
     client_id = settings.GOOGLE_CLIENT_ID
     redirect_uri = settings.GOOGLE_REDIRECT_URI
     scope = "https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/gmail.modify https://www.googleapis.com/auth/calendar"
     
+    params = {
+        "response_type": "code",
+        "client_id": client_id,
+        "redirect_uri": redirect_uri,
+        "scope": scope,
+        "access_type": "offline",
+        "prompt": "consent"
+    }
+    
     # Return auth authorization request URL redirecting user consent
-    url = (
-        "https://accounts.google.com/o/oauth2/v2/auth"
-        f"?response_type=code&client_id={client_id}"
-        f"&redirect_uri={redirect_uri}&scope={scope}"
-        "&access_type=offline&prompt=consent"
-    )
+    url = f"https://accounts.google.com/o/oauth2/v2/auth?{urllib.parse.urlencode(params)}"
     return {"url": url}
+
+@router.get("/oauth/{provider}/url")
+def get_generic_oauth_url(provider: str):
+    """Generic endpoint to generate OAuth login URLs for external platforms."""
+    # This is a scaffolding endpoint.
+    # We would return the respective auth URLs for GitHub, LinkedIn, etc.
+    # For now, return a placeholder URL for testing.
+    return {"url": f"https://mock-oauth.com/auth?provider={provider}"}
+
+@router.post("/oauth/{provider}/callback")
+async def generic_oauth_callback(
+    provider: str,
+    payload: OAuthLoginRequest, 
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Generic callback for external integrations (GitHub, Notion, etc.).
+    It saves the mock token into the user's DB entry based on the provider.
+    """
+    # Placeholder: In a real system we'd exchange the payload.code for a token.
+    mock_token = f"mock_{provider}_token_{payload.code}"
+    
+    if provider == "github":
+        current_user.github_token = mock_token
+    elif provider == "notion":
+        current_user.notion_token = mock_token
+    elif provider == "linkedin":
+        current_user.linkedin_token = mock_token
+    elif provider == "microsoft":
+        current_user.microsoft_token = mock_token
+    elif provider == "slack":
+        current_user.slack_token = mock_token
+    elif provider == "discord":
+        current_user.discord_token = mock_token
+    elif provider == "jira":
+        current_user.jira_token = mock_token
+    elif provider == "trello":
+        current_user.trello_token = mock_token
+    else:
+        raise HTTPException(status_code=400, detail="Unknown provider")
+        
+    db.commit()
+    return {"status": "success", "provider": provider}
 
 @router.post("/google/callback", response_model=Token)
 async def google_callback(payload: OAuthLoginRequest, db: Session = Depends(get_db)):
@@ -225,6 +276,8 @@ def get_me(current_user: User = Depends(get_current_user)):
     return UserResponse(
         id=current_user.id,
         email=current_user.email,
+        full_name=current_user.full_name,
+        nickname=current_user.nickname,
         is_active=current_user.is_active,
         role=current_user.role,
         created_at=current_user.created_at,
@@ -234,8 +287,29 @@ def get_me(current_user: User = Depends(get_current_user)):
         has_openai_key=bool(current_user.openai_api_key),
         has_anthropic_key=bool(current_user.anthropic_api_key),
         has_gemini_key=bool(current_user.gemini_api_key),
-        has_groq_key=bool(current_user.groq_api_key)
+        has_groq_key=bool(current_user.groq_api_key),
+        has_github_token=bool(current_user.github_token),
+        has_notion_token=bool(current_user.notion_token),
+        has_linkedin_token=bool(current_user.linkedin_token),
+        has_microsoft_token=bool(current_user.microsoft_token),
+        has_slack_token=bool(current_user.slack_token),
+        has_discord_token=bool(current_user.discord_token),
+        has_jira_token=bool(current_user.jira_token),
+        has_trello_token=bool(current_user.trello_token)
     )
+
+@router.get("/models/local")
+async def get_local_models():
+    """Fetches list of available models from local Ollama instance."""
+    try:
+        async with httpx.AsyncClient() as client:
+            res = await client.get(f"{settings.OLLAMA_API_URL}/api/tags", timeout=3.0)
+            if res.status_code == 200:
+                data = res.json()
+                return {"models": [model["name"] for model in data.get("models", [])]}
+    except Exception as e:
+        logger.warning(f"Ollama detection failed: {e}")
+    return {"models": []}
 
 from app.schemas.user import UserPreferencesUpdate
 
@@ -275,22 +349,22 @@ async def update_preferences(
     if prefs.openai_api_key and prefs.openai_api_key != current_user.openai_api_key:
         if not await _validate_api_key("openai", prefs.openai_api_key):
             raise HTTPException(status_code=400, detail="Invalid OpenAI API Key")
-        current_user.openai_api_key = prefs.openai_api_key
+        current_user.openai_api_key = encrypt_key(prefs.openai_api_key)
         
     if prefs.anthropic_api_key and prefs.anthropic_api_key != current_user.anthropic_api_key:
         if not await _validate_api_key("anthropic", prefs.anthropic_api_key):
             raise HTTPException(status_code=400, detail="Invalid Anthropic API Key")
-        current_user.anthropic_api_key = prefs.anthropic_api_key
+        current_user.anthropic_api_key = encrypt_key(prefs.anthropic_api_key)
         
     if prefs.gemini_api_key and prefs.gemini_api_key != current_user.gemini_api_key:
         if not await _validate_api_key("gemini", prefs.gemini_api_key):
             raise HTTPException(status_code=400, detail="Invalid Gemini API Key")
-        current_user.gemini_api_key = prefs.gemini_api_key
+        current_user.gemini_api_key = encrypt_key(prefs.gemini_api_key)
         
     if prefs.groq_api_key and prefs.groq_api_key != current_user.groq_api_key:
         if not await _validate_api_key("groq", prefs.groq_api_key):
             raise HTTPException(status_code=400, detail="Invalid Groq API Key")
-        current_user.groq_api_key = prefs.groq_api_key
+        current_user.groq_api_key = encrypt_key(prefs.groq_api_key)
 
     if prefs.preferred_model is not None:
         current_user.preferred_model = prefs.preferred_model
@@ -298,6 +372,10 @@ async def update_preferences(
         current_user.token_limit = prefs.token_limit
     if prefs.ollama_model is not None:
         current_user.ollama_model = prefs.ollama_model
+    if prefs.full_name is not None:
+        current_user.full_name = prefs.full_name
+    if prefs.nickname is not None:
+        current_user.nickname = prefs.nickname
 
     db.add(current_user)
     db.commit()
@@ -306,6 +384,8 @@ async def update_preferences(
     return UserResponse(
         id=current_user.id,
         email=current_user.email,
+        full_name=current_user.full_name,
+        nickname=current_user.nickname,
         is_active=current_user.is_active,
         role=current_user.role,
         created_at=current_user.created_at,
@@ -315,5 +395,13 @@ async def update_preferences(
         has_openai_key=bool(current_user.openai_api_key),
         has_anthropic_key=bool(current_user.anthropic_api_key),
         has_gemini_key=bool(current_user.gemini_api_key),
-        has_groq_key=bool(current_user.groq_api_key)
+        has_groq_key=bool(current_user.groq_api_key),
+        has_github_token=bool(current_user.github_token),
+        has_notion_token=bool(current_user.notion_token),
+        has_linkedin_token=bool(current_user.linkedin_token),
+        has_microsoft_token=bool(current_user.microsoft_token),
+        has_slack_token=bool(current_user.slack_token),
+        has_discord_token=bool(current_user.discord_token),
+        has_jira_token=bool(current_user.jira_token),
+        has_trello_token=bool(current_user.trello_token)
     )

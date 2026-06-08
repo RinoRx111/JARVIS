@@ -22,9 +22,22 @@ class User(SQLModel, table=True):
     is_active: bool = Field(default=True)
     role: str = Field(default="user")
 
+    # Profile Details
+    full_name: Optional[str] = Field(default=None)
+    nickname: Optional[str] = Field(default=None)
+
     # OAuth credentials
     google_oauth_token: Optional[str] = Field(default=None)
     google_refresh_token: Optional[str] = Field(default=None)
+    
+    github_token: Optional[str] = Field(default=None)
+    notion_token: Optional[str] = Field(default=None)
+    linkedin_token: Optional[str] = Field(default=None)
+    microsoft_token: Optional[str] = Field(default=None)
+    slack_token: Optional[str] = Field(default=None)
+    discord_token: Optional[str] = Field(default=None)
+    jira_token: Optional[str] = Field(default=None)
+    trello_token: Optional[str] = Field(default=None)
 
     # LLM Settings
     preferred_model: str = Field(default="gpt-4o")

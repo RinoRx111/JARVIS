@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { Send, Sparkles } from 'lucide-react';
 import HolographicPanel from '../HolographicPanel';

@@ -1,6 +1,6 @@
 import logging
 from typing import List, Dict, Any, Optional
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -22,7 +22,7 @@ class EventCreateRequest(BaseModel):
 
 # Mock schedule items to feed the futuristic visualizer if user is not authenticated
 def get_mock_events():
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     return [
         {
             "id": "mock_event_1",
@@ -97,7 +97,7 @@ async def get_schedule_suggestions(
     current_user: User = Depends(get_current_user)
 ):
     """Asks JARVIS's scheduler to suggest optimized open timeslots and organize productivity gaps."""
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc).replace(tzinfo=None)
     # Provide slots avoiding the main afternoon workspace duties
     return [
         {

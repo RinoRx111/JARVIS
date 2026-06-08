@@ -1,3 +1,5 @@
+"use client";
+
 import React, { useState } from 'react';
 import { Plus, Search, Trash2 } from 'lucide-react';
 import HolographicPanel from '../HolographicPanel';

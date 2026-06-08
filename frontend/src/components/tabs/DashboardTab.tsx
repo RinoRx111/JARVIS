@@ -1,3 +1,5 @@
+"use client";
+
 import React from 'react';
 import { Cpu, Upload, Sparkles } from 'lucide-react';
 import HolographicPanel from '../HolographicPanel';

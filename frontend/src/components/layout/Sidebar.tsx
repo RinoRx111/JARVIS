@@ -14,7 +14,9 @@ import {
   Settings,
   Menu,
   ChevronLeft,
-  LogOut
+  LogOut,
+  UserCircle,
+  Activity
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -30,6 +32,7 @@ const navItems = [
   { name: 'Email', icon: Mail, href: '/email' },
   { name: 'Calendar', icon: CalendarDays, href: '/calendar' },
   { name: 'Automations', icon: Zap, href: '/automations' },
+  { name: 'Analytics', icon: Activity, href: '/analytics' },
 ];
 
 export function Sidebar() {
@@ -96,6 +99,17 @@ export function Sidebar() {
       </nav>
 
       <div className="p-3 border-t border-white/5">
+        <Link href="/profile">
+          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-muted-foreground hover:bg-white/5 hover:text-white">
+            <UserCircle size={20} className="min-w-[20px]" />
+            <motion.span 
+              animate={{ opacity: isExpanded ? 1 : 0 }}
+              className={cn("font-medium text-sm whitespace-nowrap", !isExpanded && "hidden")}
+            >
+              Profile
+            </motion.span>
+          </div>
+        </Link>
         <Link href="/settings">
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-muted-foreground hover:bg-white/5 hover:text-white">
             <Settings size={20} className="min-w-[20px]" />

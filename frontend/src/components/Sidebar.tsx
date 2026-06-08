@@ -1,5 +1,7 @@
+"use client";
+
 import React from 'react';
-import { Cpu, Terminal, Bot, Globe, Database, Mail, Calendar, Settings } from 'lucide-react';
+import { Cpu, Terminal, Bot, Globe, Database, Mail, Calendar, Settings, Activity } from 'lucide-react';
 import clsx from 'clsx';
 import { useJarvisStore } from '../hooks/useJarvisStore';
 
@@ -9,6 +11,7 @@ const TABS = [
   { id: 'agents', label: 'Agent Workspace', icon: Bot },
   { id: 'browser', label: 'Virtual Browser', icon: Globe },
   { id: 'memory', label: 'Cognitive Center', icon: Database },
+  { id: 'analytics', label: 'Telemetry & Logs', icon: Activity },
   { id: 'gmail', label: 'Gmail Center', icon: Mail },
   { id: 'calendar', label: 'Calendar Hub', icon: Calendar },
   { id: 'settings', label: 'Core Configs', icon: Settings }

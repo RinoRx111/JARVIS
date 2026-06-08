@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "JARVIS - AI Operating System"
     # --- SECURITY ---
     SECRET_KEY: str = "generate_a_secure_jwt_secret_key_here_minimum_32_chars"
+    ENCRYPTION_KEY: Optional[str] = None
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
     # --- DATABASE ---

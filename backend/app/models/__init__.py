@@ -5,5 +5,7 @@ from app.models.task import AgentTask
 from app.models.audit import AuditLog
 from app.models.file import FileMetadata
 from app.models.reminder import Reminder
+from app.models.analytics import TokenUsageLog
+from app.models.agent import AgentConfig
 
-__all__ = ["User", "Conversation", "Message", "AgentTask", "AuditLog", "FileMetadata", "Reminder"]
+__all__ = ["User", "Conversation", "Message", "AgentTask", "AuditLog", "FileMetadata", "Reminder", "TokenUsageLog", "AgentConfig"]

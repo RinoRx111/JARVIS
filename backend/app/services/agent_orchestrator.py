@@ -146,22 +146,86 @@ async def call_model_node(state: AgentState) -> Dict[str, Any]:
         "If you encounter script errors or file exceptions, self-correct by rewriting code parameters and trying again."
     )
 
-    # Combine instructions
-    full_messages = [SystemMessage(content=system_prompt)] + list(messages)
-
     # Load user context
     with Session(engine) as db:
         user = db.exec(select(User).where(User.id == user_id)).first()
+        from app.models.agent import AgentConfig
+        agent_config = db.exec(select(AgentConfig).where(AgentConfig.user_id == user_id)).first()
+
+    if agent_config:
+        agent_rules = "\n\nCRITICAL SUBAGENT CONSTRAINTS:\n"
+        if not agent_config.coding_agent_enabled:
+            agent_rules += "- Coding Agent is DISABLED. Do NOT write or execute code.\n"
+        if not agent_config.email_agent_enabled:
+            agent_rules += "- Email Agent is DISABLED. Do NOT attempt to read or send emails.\n"
+        if not agent_config.calendar_agent_enabled:
+            agent_rules += "- Calendar Agent is DISABLED. Do NOT access the user's calendar.\n"
+        if not agent_config.research_agent_enabled:
+            agent_rules += "- Research Agent is DISABLED. Do NOT perform web searches.\n"
+        if not agent_config.github_agent_enabled:
+            agent_rules += "- GitHub Agent is DISABLED. Do NOT access GitHub repositories.\n"
+            
+        system_prompt += agent_rules
+
+    # Combine instructions
+    full_messages = [SystemMessage(content=system_prompt)] + list(messages)
 
     # Route and invoke model
     model = route_llm(task_type=task_type, user=user)
     
     from app.tools.plugin_manager import plugin_manager
     # Bind standard LangChain tool schemas
-    model_with_tools = model.bind_tools(plugin_manager.get_all_tools())
+    try:
+        model_with_tools = model.bind_tools(plugin_manager.get_all_tools())
+    except NotImplementedError:
+        logger.warning(f"Model {model.__class__.__name__} does not support tool binding. Running without tools.")
+        model_with_tools = model
     
-    # Run prediction
-    response = await model_with_tools.ainvoke(full_messages)
+    # Run prediction with Fallback Logic
+    try:
+        response = await model_with_tools.ainvoke(full_messages)
+    except Exception as primary_e:
+        logger.error(f"Primary model failed: {primary_e}. Attempting fallback to local Ollama...")
+        from app.services.llm import get_ollama_client
+        fallback_model = get_ollama_client(user=user)
+        if not fallback_model:
+            raise ValueError(f"Primary model failed and no fallback available: {primary_e}")
+        
+        try:
+            fallback_with_tools = fallback_model.bind_tools(plugin_manager.get_all_tools())
+        except NotImplementedError:
+            fallback_with_tools = fallback_model
+            
+        try:
+            response = await fallback_with_tools.ainvoke(full_messages)
+        except Exception as fallback_e:
+            raise ValueError(f"Primary model failed ({primary_e}) and Fallback model failed ({fallback_e}).")
+            
+    # Track Token Usage
+    try:
+        from app.models.analytics import TokenUsageLog
+        if hasattr(response, "response_metadata") and "token_usage" in response.response_metadata:
+            usage = response.response_metadata["token_usage"]
+            prompt_tok = usage.get("prompt_tokens", 0)
+            comp_tok = usage.get("completion_tokens", 0)
+            total_tok = usage.get("total_tokens", 0)
+            
+            # Simple cost estimation metric (e.g., $0.005 / 1k prompt, $0.015 / 1k completion)
+            est_cost = (prompt_tok / 1000.0) * 0.005 + (comp_tok / 1000.0) * 0.015
+            
+            with Session(engine) as db:
+                log_entry = TokenUsageLog(
+                    user_id=user_id,
+                    model_name=model.__class__.__name__,
+                    prompt_tokens=prompt_tok,
+                    completion_tokens=comp_tok,
+                    total_tokens=total_tok,
+                    estimated_cost_usd=est_cost
+                )
+                db.add(log_entry)
+                db.commit()
+    except Exception as e:
+        logger.warning(f"Failed to log token usage: {e}")
     
     return {"messages": [response]}
 
@@ -293,6 +357,16 @@ def route_after_classification(state: AgentState) -> str:
 def route_after_tools(state: AgentState) -> str:
     messages = state["messages"]
     last_message = messages[-1]
+    error_count = state.get("error_count", 0)
+    depth = state.get("tool_call_depth", 0)
+    
+    if error_count > 3:
+        logger.warning("route_after_tools: Agent execution exceeded maximum self-correcting error threshold. Halting.")
+        return END
+
+    if depth > 10:
+        logger.warning("route_after_tools: Agent execution exceeded maximum tool call depth. Halting.")
+        return END
     
     if hasattr(last_message, "content") and ("Error" in last_message.content or "failed" in last_message.content):
         return "planner"

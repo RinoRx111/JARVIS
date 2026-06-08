@@ -51,7 +51,6 @@ class CodeSandbox:
                 network_mode="none", # Disable internet inside container
                 mem_limit="256m",     # Limit memory usage
                 nano_cpus=500000000, # 0.5 CPU core limit (500000000 nanoseconds = 50% CPU)
-                user="1000:1000",    # Run as non-root user
                 detach=False,
                 stdout=True,
                 stderr=True,

@@ -3,7 +3,6 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
 from sqlmodel import Session, select
 from langchain_core.messages import HumanMessage
-from app.core.celery_app import celery_app
 import asyncio
 
 from app.core.database import get_db
@@ -11,23 +10,21 @@ from app.api.v1.auth import get_current_user
 from app.models.user import User
 from app.models.task import AgentTask
 from app.models.audit import AuditLog
+from app.models.agent import AgentConfig
 from app.schemas.agent import TaskCreate, TaskResponse, AuditLogResponse
+from pydantic import BaseModel
 from app.services.agent_orchestrator import agent_graph
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/agents", tags=["Agent Task Management"])
 
-@celery_app.task(name="agents.run_agent_task_background")
-def run_agent_task_background(task_id: int, user_id: int, prompt: str, db_url: str):
-    """Celery background task runner to execute LangGraph orchestrator on user prompts."""
-    # Since background tasks run in separate thread/context, we spin up localized sessions
-    from sqlalchemy import create_engine
-    from sqlalchemy.orm import sessionmaker
-    
-    engine = create_engine(db_url)
-    SessionLocal = sessionmaker(bind=engine)
-    db = SessionLocal()
+async def run_agent_task_background(task_id: int, user_id: int, prompt: str):
+    """Background task runner to execute LangGraph orchestrator on user prompts."""
+    # Local session for background task
+    from app.core.database import engine
+    from sqlmodel import Session
+    db = Session(engine)
     
     try:
         task = db.exec(select(AgentTask).where(AgentTask.id == task_id)).first()
@@ -46,7 +43,7 @@ def run_agent_task_background(task_id: int, user_id: int, prompt: str, db_url: s
             "tool_call_depth": 0
         }
         
-        final_state = asyncio.run(agent_graph.ainvoke(inputs))
+        final_state = await agent_graph.ainvoke(inputs)
         reply = final_state["messages"][-1].content
         
         task.status = "completed"
@@ -77,13 +74,12 @@ def create_agent_task(
     db.commit()
     db.refresh(new_task)
 
-    # Launch execution background thread via Celery
-    from app.core.config import settings
-    run_agent_task_background.delay(
+    # Launch execution background task via FastAPI BackgroundTasks
+    background_tasks.add_task(
+        run_agent_task_background,
         new_task.id,
         current_user.id,
-        f"Task {payload.task_type}: {payload.description}",
-        settings.get_database_url()
+        f"Task {payload.task_type}: {payload.description}"
     )
 
     return new_task
@@ -115,3 +111,52 @@ def get_agent_audit_logs(
 ):
     """Retrieves chronological activity audit logs of tool calls executed by the agents."""
     return db.exec(select(AuditLog).where(AuditLog.user_id == current_user.id).order_by(AuditLog.created_at.desc())).all()
+
+class AgentConfigSchema(BaseModel):
+    research_agent_enabled: bool
+    coding_agent_enabled: bool
+    github_agent_enabled: bool
+    email_agent_enabled: bool
+    calendar_agent_enabled: bool
+    resume_agent_enabled: bool
+    linkedin_agent_enabled: bool
+    automation_agent_enabled: bool
+
+@router.get("/config", response_model=AgentConfigSchema)
+def get_agent_config(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Fetches the user's agent marketplace configuration."""
+    config = db.exec(select(AgentConfig).where(AgentConfig.user_id == current_user.id)).first()
+    if not config:
+        config = AgentConfig(user_id=current_user.id)
+        db.add(config)
+        db.commit()
+        db.refresh(config)
+    return config
+
+@router.put("/config", response_model=AgentConfigSchema)
+def update_agent_config(
+    payload: AgentConfigSchema,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Updates the user's enabled/disabled agents."""
+    config = db.exec(select(AgentConfig).where(AgentConfig.user_id == current_user.id)).first()
+    if not config:
+        config = AgentConfig(user_id=current_user.id)
+        db.add(config)
+
+    config.research_agent_enabled = payload.research_agent_enabled
+    config.coding_agent_enabled = payload.coding_agent_enabled
+    config.github_agent_enabled = payload.github_agent_enabled
+    config.email_agent_enabled = payload.email_agent_enabled
+    config.calendar_agent_enabled = payload.calendar_agent_enabled
+    config.resume_agent_enabled = payload.resume_agent_enabled
+    config.linkedin_agent_enabled = payload.linkedin_agent_enabled
+    config.automation_agent_enabled = payload.automation_agent_enabled
+
+    db.commit()
+    db.refresh(config)
+    return config

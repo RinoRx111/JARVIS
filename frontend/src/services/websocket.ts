@@ -1,4 +1,6 @@
 import { useJarvisStore } from '../hooks/useJarvisStore';
+import { voiceManager } from './VoiceManager';
+import { toolManager } from './ToolManager';
 
 class WebSocketService {
   private socket: WebSocket | null = null;
@@ -29,8 +31,8 @@ class WebSocketService {
         const store = useJarvisStore.getState();
         
         if (data.type === 'transcription') {
-          store.addMessage({ id: Date.now() - 1, role: 'user', content: data.text, created_at: new Date().toISOString() } as any);
-          store.addMessage({ id: Date.now(), role: 'assistant', content: '', created_at: new Date().toISOString() } as any);
+          store.addMessage({ id: crypto.randomUUID(), role: 'user', content: data.text, created_at: new Date().toISOString() } as any);
+          store.addMessage({ id: crypto.randomUUID(), role: 'assistant', content: '', created_at: new Date().toISOString() } as any);
           store.addNotification(`Transcription synced: "${data.text}"`);
           store.setCoreStatus('THINKING');
         } else if (data.type === 'token') {
@@ -46,28 +48,12 @@ class WebSocketService {
           });
         } else if (data.type === 'status') {
           store.addNotification(data.message);
+          
+          // Delegate to ToolManager instead of inline parsing
           if (data.action === 'tool_start' && data.tool_name) {
-            store.addToolCallToLastMessage(data.tool_name);
-            
-            // Personality Tier: Spoken Narration
-            const currentStatus = useJarvisStore.getState().coreStatus;
-            if (currentStatus !== 'SPEAKING') {
-              let narration = "Executing sub-routine, sir.";
-              if (data.tool_name.includes("search")) narration = "Searching the web now, sir.";
-              else if (data.tool_name.includes("execute") || data.tool_name.includes("python")) narration = "Running your code.";
-              else if (data.tool_name.includes("gmail") || data.tool_name.includes("email")) narration = "Accessing mail servers.";
-              else if (data.tool_name.includes("calendar")) narration = "Checking your calendar.";
-              
-              this.speakLocalTTS(narration);
-            }
+            toolManager.handleToolStart(data.tool_name);
           } else if (data.action === 'tool_end') {
-            const currentStatus = useJarvisStore.getState().coreStatus;
-            if (currentStatus !== 'SPEAKING') {
-              this.speakLocalTTS("Task complete.");
-            }
-          } else if (data.message.startsWith('Invoking sub-routine:')) {
-            const toolName = data.message.split('Invoking sub-routine:')[1].trim().replace('...', '');
-            store.addToolCallToLastMessage(toolName);
+            toolManager.handleToolEnd();
           }
         } else if (data.type === 'plan') {
           store.setPlan(data.plan);
@@ -91,11 +77,11 @@ class WebSocketService {
           store.fetchConversations();
           
           if (!data.voice_url && store.isVoiceActive) {
-            this.speakLocalTTS(data.text);
+            voiceManager.speak(data.text);
           }
         } else if (data.error) {
           store.addNotification(`Uplink warning: ${data.error}`);
-          const errorMessage = { id: Date.now(), role: 'system', content: `[ERROR] ${data.error}`, created_at: new Date().toISOString() };
+          const errorMessage = { id: crypto.randomUUID(), role: 'system', content: `[ERROR] ${data.error}`, created_at: new Date().toISOString() };
           store.addMessage(errorMessage as any);
           store.setCoreStatus('STANDBY');
         }
@@ -139,7 +125,7 @@ class WebSocketService {
       this.socket.send(arrayBuffer);
     } else {
       useJarvisStore.getState().addNotification("Uplink inactive. Cannot stream audio.");
-      const errorMessage = { id: Date.now(), role: 'system', content: '[ERROR] WebSocket connection is offline. Cannot stream audio.', created_at: new Date().toISOString() };
+      const errorMessage = { id: crypto.randomUUID(), role: 'system', content: '[ERROR] WebSocket connection is offline. Cannot stream audio.', created_at: new Date().toISOString() };
       useJarvisStore.getState().addMessage(errorMessage as any);
     }
   }
@@ -147,9 +133,9 @@ class WebSocketService {
   sendTextMessage(text: string) {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) {
       useJarvisStore.setState({ coreStatus: 'THINKING' });
-      const userMessage = { id: Date.now(), role: 'user', content: text, created_at: new Date().toISOString() };
+      const userMessage = { id: crypto.randomUUID(), role: 'user', content: text, created_at: new Date().toISOString() };
       useJarvisStore.getState().addMessage(userMessage as any);
-      const placeholderAssistant = { id: Date.now() + 1, role: 'assistant', content: '', created_at: new Date().toISOString() };
+      const placeholderAssistant = { id: crypto.randomUUID(), role: 'assistant', content: '', created_at: new Date().toISOString() };
       useJarvisStore.getState().addMessage(placeholderAssistant as any);
       this.socket.send(JSON.stringify({ 
         text, 
@@ -157,22 +143,8 @@ class WebSocketService {
       }));
     } else {
       useJarvisStore.getState().addNotification("Uplink inactive. Cannot stream text.");
-      const errorMessage = { id: Date.now(), role: 'system', content: '[ERROR] WebSocket connection is offline. Cannot stream text.', created_at: new Date().toISOString() };
+      const errorMessage = { id: crypto.randomUUID(), role: 'system', content: '[ERROR] WebSocket connection is offline. Cannot stream text.', created_at: new Date().toISOString() };
       useJarvisStore.getState().addMessage(errorMessage as any);
-    }
-  }
-
-  speakLocalTTS(text: string) {
-    if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
-      window.speechSynthesis.cancel(); 
-      const cleanText = text.replace(/[*_~`#]/g, ''); 
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.rate = 1.05;
-      utterance.pitch = 0.95;
-      const voices = window.speechSynthesis.getVoices();
-      const voice = voices.find(v => v.name.includes('Google UK English Male') || v.name.includes('Microsoft Mark') || v.name.includes('Daniel') || v.name.includes('English'));
-      if (voice) utterance.voice = voice;
-      window.speechSynthesis.speak(utterance);
     }
   }
 }

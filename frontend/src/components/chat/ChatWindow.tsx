@@ -16,7 +16,46 @@ export function ChatWindow() {
   const store = useJarvisStore();
   const { isListeningForWakeWord } = useWakeWord();
   const [input, setInput] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) {
+          audioChunksRef.current.push(e.data);
+        }
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        wsService.sendVoiceChunk(audioBlob);
+      };
+
+      mediaRecorder.start(); // Record until stopped
+      setIsRecording(true);
+      store.setCoreStatus('LISTENING');
+    } catch (err) {
+      console.error("Microphone access denied:", err);
+      store.addNotification("Microphone access denied.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
+      setIsRecording(false);
+      store.setCoreStatus('THINKING');
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -50,12 +89,9 @@ export function ChatWindow() {
     // 3. Reset core status to standby
     store.setCoreStatus('STANDBY');
     
-    // 4. Force disconnect websocket to interrupt streaming
-    wsService.close();
-    setTimeout(() => {
-      wsService.init(); // Reconnect immediately after aborting
-      store.addNotification("Generation interrupted by user.");
-    }, 500);
+    // 4. Send cancellation event instead of disconnecting websocket
+    wsService.sendTextMessage(JSON.stringify({ type: "cancel" }));
+    store.addNotification("Generation interrupted by user.");
   };
 
   const isGenerating = store.coreStatus === 'THINKING' || store.coreStatus === 'SPEAKING';
@@ -165,7 +201,16 @@ export function ChatWindow() {
         <div className="relative">
           <form onSubmit={handleSend} className="relative flex items-end gap-2 bg-black/40 backdrop-blur-xl border border-white/10 rounded-2xl p-2 shadow-lg focus-within:border-primary/50 focus-within:shadow-[0_0_15px_rgba(0,216,255,0.1)] transition-all">
             
-            <button type="button" className="p-3 text-muted-foreground hover:text-white transition-colors shrink-0">
+            <button 
+              type="button" 
+              onMouseDown={startRecording}
+              onMouseUp={stopRecording}
+              onMouseLeave={stopRecording}
+              onTouchStart={startRecording}
+              onTouchEnd={stopRecording}
+              title="Hold to speak"
+              className={`p-3 transition-colors shrink-0 ${isRecording ? 'text-red-500 animate-pulse drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]' : 'text-muted-foreground hover:text-white'}`}
+            >
               <Mic size={20} />
             </button>
             

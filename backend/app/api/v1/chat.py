@@ -234,15 +234,10 @@ async def send_chat_message(
     # 7. Check if we should save a memory fact in background
     try:
         from app.services.memory_agent import run_memory_extraction_agent
-        run_memory_extraction_agent.delay(current_user.id, payload.content)
-    except Exception as e:
-        logger.warning(f"Failed to queue memory extraction (Celery broker may be offline): {e}")
-        logger.info("Falling back to local asyncio execution for memory extraction.")
         import asyncio
-        async def fallback_memory():
-            loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, run_memory_extraction_agent, current_user.id, payload.content)
-        asyncio.create_task(fallback_memory())
+        asyncio.create_task(run_memory_extraction_agent(current_user.id, payload.content))
+    except Exception as e:
+        logger.warning(f"Failed to start memory extraction task: {e}")
 
     return {
         "conversation_id": conversation.id,
@@ -278,10 +273,27 @@ async def websocket_chat_endpoint(websocket: WebSocket, token: str, db: Session 
 
     await manager.connect(user.id, websocket)
 
+    import asyncio
+    current_task = None
+
     try:
         while True:
             # Receive text or audio binary payload
             data = await websocket.receive()
+            
+            # Check for cancellation early
+            if "text" in data:
+                raw_text = data["text"]
+                try:
+                    import json
+                    parsed = json.loads(raw_text)
+                    if parsed.get("type") == "cancel":
+                        if current_task and not current_task.done():
+                            current_task.cancel()
+                            await websocket.send_json({"type": "status", "message": "Generation stopped by user."})
+                        continue
+                except Exception:
+                    pass
             
             # 1. Handlers for raw voice bytes input (Audio Streaming)
             if "bytes" in data:
@@ -317,8 +329,10 @@ async def websocket_chat_endpoint(websocket: WebSocket, token: str, db: Session 
                 # Send transcribed text back to client first
                 await websocket.send_json({"type": "transcription", "text": transcription})
                 
-                # Run the conversational pipeline with the transcribed text (Voice chunk doesn't carry conversation_id easily in raw bytes, so it defaults to None/new)
-                await _ws_process_response(websocket, transcription, user, db, None)
+                # Run the conversational pipeline with the transcribed text
+                if current_task and not current_task.done():
+                    current_task.cancel()
+                current_task = asyncio.create_task(_ws_process_response_with_timeout(websocket, transcription, user, db, None))
             
             elif "text" in data:
                 raw_text = data["text"]
@@ -330,13 +344,27 @@ async def websocket_chat_endpoint(websocket: WebSocket, token: str, db: Session 
                     conversation_id = parsed.get("conversation_id")
                 except Exception:
                     text_input = raw_text
-                await _ws_process_response(websocket, text_input, user, db, conversation_id)
+                
+                if current_task and not current_task.done():
+                    current_task.cancel()
+                current_task = asyncio.create_task(_ws_process_response_with_timeout(websocket, text_input, user, db, conversation_id))
                 
     except WebSocketDisconnect:
         manager.disconnect(user.id, websocket)
     except Exception as e:
         logger.error(f"WebSocket runtime exception: {e}")
         manager.disconnect(user.id, websocket)
+
+async def _ws_process_response_with_timeout(websocket: WebSocket, prompt: str, user: User, db: Session, conversation_id: Optional[int] = None) -> None:
+    import asyncio
+    try:
+        await asyncio.wait_for(_ws_process_response(websocket, prompt, user, db, conversation_id), timeout=120.0)
+    except asyncio.TimeoutError:
+        logger.warning(f"Agent execution timed out for user {user.id}")
+        await websocket.send_json({"error": "Agent execution timed out after 120 seconds."})
+    except asyncio.CancelledError:
+        logger.info(f"Agent execution was cancelled by user {user.id}.")
+        # Task was cancelled explicitly, gracefully stop without error to frontend
 
 async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db: Session, conversation_id: Optional[int] = None) -> None:
     """Helper method to run the orchestrator loop, stream tokens, and synthesize speech."""
@@ -364,15 +392,10 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
     # Launch memory extraction agent as an independent background task
     try:
         from app.services.memory_agent import run_memory_extraction_agent
-        run_memory_extraction_agent.delay(user.id, prompt)
-    except Exception as e:
-        logger.warning(f"Failed to queue memory extraction (Celery broker may be offline): {e}")
-        logger.info("Falling back to local asyncio execution for memory extraction.")
         import asyncio
-        async def fallback_memory_ws():
-            loop = asyncio.get_running_loop()
-            await loop.run_in_executor(None, run_memory_extraction_agent, user.id, prompt)
-        asyncio.create_task(fallback_memory_ws())
+        asyncio.create_task(run_memory_extraction_agent(user.id, prompt))
+    except Exception as e:
+        logger.warning(f"Failed to start memory extraction task: {e}")
 
     # Retrieve prior context logs to inject into state
     db_messages = db.exec(select(Message).where(Message.conversation_id == conversation.id).order_by(Message.created_at)).all()

@@ -19,6 +19,10 @@ class UserResponse(UserBase):
     role: Role
     created_at: datetime
     
+    # Profile details
+    full_name: Optional[str] = None
+    nickname: Optional[str] = None
+    
     # LLM Settings exposed to frontend
     preferred_model: str
     token_limit: int
@@ -28,11 +32,23 @@ class UserResponse(UserBase):
     has_anthropic_key: bool = False
     has_gemini_key: bool = False
     has_groq_key: bool = False
+    
+    # Integration tokens
+    has_github_token: bool = False
+    has_notion_token: bool = False
+    has_linkedin_token: bool = False
+    has_microsoft_token: bool = False
+    has_slack_token: bool = False
+    has_discord_token: bool = False
+    has_jira_token: bool = False
+    has_trello_token: bool = False
 
     class Config:
         from_attributes = True
 
 class UserPreferencesUpdate(BaseModel):
+    full_name: Optional[str] = None
+    nickname: Optional[str] = None
     preferred_model: Optional[str] = None
     token_limit: Optional[int] = None
     openai_api_key: Optional[str] = None

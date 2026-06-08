@@ -8,11 +8,8 @@ from app.services.llm import route_llm
 from app.services.memory import memory_service
 from app.models.user import User
 
-from app.core.celery_app import celery_app
-import asyncio
 
-@celery_app.task(name="memory_agent.run_memory_extraction_agent")
-def run_memory_extraction_agent(user_id: int, user_message: str):
+async def run_memory_extraction_agent(user_id: int, user_message: str):
     """
     Analyzes the user's message asynchronously to extract persistent factual memories or preferences.
     """
@@ -35,7 +32,7 @@ Keep facts concise and generalized. If there are no facts or profile traits wort
 Output ONLY the JSON object. Do not include any markdown block formatting.
 """
     try:
-        response = asyncio.run(model.ainvoke([HumanMessage(content=prompt)]))
+        response = await model.ainvoke([HumanMessage(content=prompt)])
         
         # Clean up possible markdown code blocks from the response
         content = response.content.strip()
