@@ -185,8 +185,15 @@ interface JarvisState {
 const speakLocalTTS = (text: string) => {
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.cancel(); // Stop any currently playing audio
-    const cleanText = text.replace(/[*_~`#]/g, ''); // Strip markdown
-    const utterance = new SpeechSynthesisUtterance(cleanText);
+    
+    // 1. Remove URLs
+    let cleanText = text.replace(/https?:\/\/[^\s]+/g, '');
+    // 2. Remove JSON or code blocks (things between ```)
+    cleanText = cleanText.replace(/```[\s\S]*?```/g, ' [Code Block Omitted] ');
+    // 3. Remove general markdown characters
+    cleanText = cleanText.replace(/[*_~`#\[\]()>-]/g, '');
+    
+    const utterance = new SpeechSynthesisUtterance(cleanText.trim() || "No readable text available.");
     utterance.rate = 1.05;
     utterance.pitch = 0.95;
     const voices = window.speechSynthesis.getVoices();

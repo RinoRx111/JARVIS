@@ -28,19 +28,7 @@ VOICE_OUTPUT_DIR = os.path.join(settings.WORKSPACE_DIR, "static", "voice")
 os.makedirs(VOICE_OUTPUT_DIR, exist_ok=True)
 
 # Helper to verify token on WebSocket connection (Bypassed for local Desktop mode)
-async def get_ws_user(token: str, db: Session) -> Optional[User]:
-    user = db.exec(select(User).where(User.email == "local@jarvis.os")).first()
-    if not user:
-        from app.core.security import get_password_hash
-        user = User(
-            email="local@jarvis.os",
-            hashed_password=get_password_hash("desktop_mode"),
-            is_active=True
-        )
-        db.add(user)
-        db.commit()
-        db.refresh(user)
-    return user
+# Function removed as it was dead code bypassing security.
 
 async def synthesize_voice_elevenlabs(text: str) -> Optional[str]:
     """Generates synthetic audio file using ElevenLabs API and returns static url path."""
@@ -412,8 +400,13 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
     agent_reply = ""
     
     if current_tokens > user.token_limit:
-        # Compress history by keeping only the last 2 messages (the new prompt and one previous)
-        langchain_history = langchain_history[-2:]
+        # Find a safe boundary (HumanMessage) to truncate at to avoid orphaned tool calls
+        safe_index = len(langchain_history) - 1
+        for i in range(len(langchain_history) - 2, -1, -1):
+            if isinstance(langchain_history[i], HumanMessage):
+                safe_index = i
+                break
+        langchain_history = langchain_history[safe_index:]
         compression_msg = "\n*(System: Conversation history compressed to stay within your token limit. You may increase the limit in Settings.)*\n\n"
         await websocket.send_json({"type": "token", "token": compression_msg})
         agent_reply += compression_msg
@@ -427,6 +420,8 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
         "tool_call_depth": 0
     }
     
+    accumulated_messages = []
+    
     try:
         # Stream events from LangGraph
         async for event in agent_graph.astream_events(inputs, version="v2"):
@@ -439,6 +434,12 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
                 state_data = event.get("data", {}).get("output", {})
                 if isinstance(state_data, dict) and "plan" in state_data:
                     await websocket.send_json({"type": "plan", "plan": state_data["plan"]})
+                    
+            elif kind == "on_chain_end" and event.get("name") in ["agent", "tools"]:
+                state_data = event.get("data", {}).get("output", {})
+                if isinstance(state_data, dict) and "messages" in state_data:
+                    for m in state_data["messages"]:
+                        accumulated_messages.append(m)
             
             # Stream text tokens directly to client
             elif kind == "on_chat_model_stream":
@@ -493,8 +494,34 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
 
     # Save messages to database
     db.add(Message(conversation_id=conversation.id, role="user", content=prompt))
-    db.add(Message(conversation_id=conversation.id, role="assistant", content=agent_reply, voice_url=voice_url))
+    
+    # Save intermediate tool execution steps
+    for m in accumulated_messages:
+        from langchain_core.messages import ToolMessage, AIMessage
+        role = "assistant" if isinstance(m, AIMessage) else "tool" if isinstance(m, ToolMessage) else "system"
+        content = str(m.content)
+        if not content and hasattr(m, "tool_calls") and m.tool_calls:
+            content = f"[Invoked Tools: {', '.join([t['name'] for t in m.tool_calls])}]"
+            
+        db.add(Message(conversation_id=conversation.id, role=role, content=content))
+
+    # Save final response with voice_url attached
+    if not accumulated_messages or not isinstance(accumulated_messages[-1], AIMessage):
+        db.add(Message(conversation_id=conversation.id, role="assistant", content=agent_reply, voice_url=voice_url))
+    else:
+        # If the last message was already added in the loop above, we shouldn't add it again.
+        # But wait, accumulated_messages[-1] IS the final assistant message! We just added it without voice_url.
+        # Let's commit and then update the last message.
+        pass
+        
     db.commit()
+    
+    # Update voice_url on the very last message in the conversation if it exists
+    if voice_url:
+        last_msg = db.exec(select(Message).where(Message.conversation_id == conversation.id).order_by(Message.id.desc())).first()
+        if last_msg:
+            last_msg.voice_url = voice_url
+            db.commit()
 
     # Send final completed packet
     await websocket.send_json({

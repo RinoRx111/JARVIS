@@ -195,6 +195,9 @@ async def call_model_node(state: AgentState) -> Dict[str, Any]:
             fallback_with_tools = fallback_model.bind_tools(plugin_manager.get_all_tools())
         except NotImplementedError:
             fallback_with_tools = fallback_model
+            # Inject explicit instructions for non-tool-calling models
+            fallback_system = SystemMessage(content="You do not have tool calling enabled. Inform the user gracefully that you cannot perform the requested action because your tools are offline.")
+            full_messages.insert(0, fallback_system)
             
         try:
             response = await fallback_with_tools.ainvoke(full_messages)
@@ -243,14 +246,10 @@ async def execute_tools_node(state: AgentState) -> Dict[str, Any]:
     tool_outputs = []
     
     if hasattr(last_message, "tool_calls") and last_message.tool_calls:
-        # Load user context from DB to pass to OAuth services
-        with Session(engine) as db:
-            user = db.exec(select(User).where(User.id == user_id)).first()
-
-            for tool_call in last_message.tool_calls:
-                tool_name = tool_call["name"]
-                arguments = tool_call["args"]
-                tool_call_id = tool_call["id"]
+        for tool_call in last_message.tool_calls:
+            tool_name = tool_call["name"]
+            arguments = tool_call["args"]
+            tool_call_id = tool_call["id"]
                 
                 logger.info(f"Invoking tool '{tool_name}' with arguments: {arguments}")
                 
@@ -273,16 +272,20 @@ async def execute_tools_node(state: AgentState) -> Dict[str, Any]:
                 error_details = None
                 
                 custom_handler = plugin_manager.get_custom_handler(tool_name)
-                if custom_handler:
-                    try:
-                        result = await custom_handler(user, db, **arguments)
-                        status = "success" if "failed" not in str(result).lower() else "failed"
-                    except Exception as err:
-                        error_details = traceback.format_exc()
-                        result = f"Custom Handler Error: {str(err)}"
-                        status = "failed"
-                        error_count += 1
-                else:
+                
+                with Session(engine) as db:
+                    user = db.exec(select(User).where(User.id == user_id)).first()
+                    
+                    if custom_handler:
+                        try:
+                            result = await custom_handler(user, db, **arguments)
+                            status = "success" if "failed" not in str(result).lower() else "failed"
+                        except Exception as err:
+                            error_details = traceback.format_exc()
+                            result = f"Custom Handler Error: {str(err)}"
+                            status = "failed"
+                            error_count += 1
+                    else:
                     # 2. Standard Registry Tools routing
                     target_tool = plugin_manager.get_tool(tool_name)
                     if target_tool:
@@ -299,22 +302,22 @@ async def execute_tools_node(state: AgentState) -> Dict[str, Any]:
                         status = "failed"
                         error_count += 1
 
-                duration_ms = int((time.time() - start_time) * 1000)
+                    duration_ms = int((time.time() - start_time) * 1000)
 
-                # Save audit logs to database
-                if db and user:
-                    audit = AuditLog(
-                        user_id=user.id,
-                        agent_name="JARVIS_Orchestrator",
-                        action=tool_name,
-                        parameters=json.dumps(arguments),
-                        status=status,
-                        response=str(result)[:1000],
-                        error_details=error_details,
-                        duration_ms=duration_ms
-                    )
-                    db.add(audit)
-                    db.commit()
+                    # Save audit logs to database
+                    if user:
+                        audit = AuditLog(
+                            user_id=user.id,
+                            agent_name="JARVIS_Orchestrator",
+                            action=tool_name,
+                            parameters=json.dumps(arguments),
+                            status=status,
+                            response=str(result)[:1000],
+                            error_details=error_details,
+                            duration_ms=duration_ms
+                        )
+                        db.add(audit)
+                        db.commit()
 
                 # Append structured Tool response message
                 tool_outputs.append(
