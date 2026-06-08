@@ -250,42 +250,42 @@ async def execute_tools_node(state: AgentState) -> Dict[str, Any]:
             tool_name = tool_call["name"]
             arguments = tool_call["args"]
             tool_call_id = tool_call["id"]
-                
-                logger.info(f"Invoking tool '{tool_name}' with arguments: {arguments}")
-                
-                from app.tools.plugin_manager import plugin_manager
-                
-                # 1. Custom Context-Aware Handlers (e.g. Google APIs)
-                # Normalize common names that the LLM might output
-                if "gmail" in tool_name.lower() and "list" in tool_name.lower():
-                    tool_name = "gmail_list_emails_tool"
-                elif "gmail" in tool_name.lower() and "send" in tool_name.lower():
-                    tool_name = "gmail_send_email_tool"
-                elif "calendar" in tool_name.lower() and "list" in tool_name.lower():
-                    tool_name = "calendar_list_events_tool"
-                elif "calendar" in tool_name.lower() and "create" in tool_name.lower():
-                    tool_name = "calendar_create_event_tool"
+            
+            logger.info(f"Invoking tool '{tool_name}' with arguments: {arguments}")
+            
+            from app.tools.plugin_manager import plugin_manager
+            
+            # 1. Custom Context-Aware Handlers (e.g. Google APIs)
+            # Normalize common names that the LLM might output
+            if "gmail" in tool_name.lower() and "list" in tool_name.lower():
+                tool_name = "gmail_list_emails_tool"
+            elif "gmail" in tool_name.lower() and "send" in tool_name.lower():
+                tool_name = "gmail_send_email_tool"
+            elif "calendar" in tool_name.lower() and "list" in tool_name.lower():
+                tool_name = "calendar_list_events_tool"
+            elif "calendar" in tool_name.lower() and "create" in tool_name.lower():
+                tool_name = "calendar_create_event_tool"
 
-                import time
-                import traceback
-                start_time = time.time()
-                error_details = None
+            import time
+            import traceback
+            start_time = time.time()
+            error_details = None
+            
+            custom_handler = plugin_manager.get_custom_handler(tool_name)
+            
+            with Session(engine) as db:
+                user = db.exec(select(User).where(User.id == user_id)).first()
                 
-                custom_handler = plugin_manager.get_custom_handler(tool_name)
-                
-                with Session(engine) as db:
-                    user = db.exec(select(User).where(User.id == user_id)).first()
-                    
-                    if custom_handler:
-                        try:
-                            result = await custom_handler(user, db, **arguments)
-                            status = "success" if "failed" not in str(result).lower() else "failed"
-                        except Exception as err:
-                            error_details = traceback.format_exc()
-                            result = f"Custom Handler Error: {str(err)}"
-                            status = "failed"
-                            error_count += 1
-                    else:
+                if custom_handler:
+                    try:
+                        result = await custom_handler(user, db, **arguments)
+                        status = "success" if "failed" not in str(result).lower() else "failed"
+                    except Exception as err:
+                        error_details = traceback.format_exc()
+                        result = f"Custom Handler Error: {str(err)}"
+                        status = "failed"
+                        error_count += 1
+                else:
                     # 2. Standard Registry Tools routing
                     target_tool = plugin_manager.get_tool(tool_name)
                     if target_tool:
@@ -302,31 +302,31 @@ async def execute_tools_node(state: AgentState) -> Dict[str, Any]:
                         status = "failed"
                         error_count += 1
 
-                    duration_ms = int((time.time() - start_time) * 1000)
+                duration_ms = int((time.time() - start_time) * 1000)
 
-                    # Save audit logs to database
-                    if user:
-                        audit = AuditLog(
-                            user_id=user.id,
-                            agent_name="JARVIS_Orchestrator",
-                            action=tool_name,
-                            parameters=json.dumps(arguments),
-                            status=status,
-                            response=str(result)[:1000],
-                            error_details=error_details,
-                            duration_ms=duration_ms
-                        )
-                        db.add(audit)
-                        db.commit()
-
-                # Append structured Tool response message
-                tool_outputs.append(
-                    ToolMessage(
-                        content=str(result),
-                        tool_call_id=tool_call_id,
-                        name=tool_name
+                # Save audit logs to database
+                if user:
+                    audit = AuditLog(
+                        user_id=user.id,
+                        agent_name="JARVIS_Orchestrator",
+                        action=tool_name,
+                        parameters=json.dumps(arguments),
+                        status=status,
+                        response=str(result)[:1000],
+                        error_details=error_details,
+                        duration_ms=duration_ms
                     )
+                    db.add(audit)
+                    db.commit()
+
+            # Append structured Tool response message
+            tool_outputs.append(
+                ToolMessage(
+                    content=str(result),
+                    tool_call_id=tool_call_id,
+                    name=tool_name
                 )
+            )
 
     return {"messages": tool_outputs, "error_count": error_count, "tool_call_depth": state.get("tool_call_depth", 0) + 1}
 
