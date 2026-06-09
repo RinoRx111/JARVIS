@@ -36,6 +36,7 @@ app = FastAPI(
     title="JARVIS - AI Operating System",
     description="Backend API gateway for JARVIS AI Operating System",
     version="1.0.0",
+    lifespan=lifespan,
 )
 
 # Initialize Rate Limiter
