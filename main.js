@@ -27,15 +27,7 @@ function createWindow() {
   mainWindow.maximize();
 
   if (isDev) {
-    // In dev, we might still want to use the dev server if it's running, 
-    // but the instruction is to use production ready.
-    // Let's assume we serve the static 'out' directory.
-    const indexPath = path.join(__dirname, 'frontend', 'out', 'index.html');
-    if (fs.existsSync(indexPath)) {
-      mainWindow.loadFile(indexPath);
-    } else {
-      console.log('Static export not found, please run npm run build in frontend directory.');
-    }
+    mainWindow.loadURL('http://localhost:3000');
   } else {
     mainWindow.loadFile(path.join(process.resourcesPath, 'frontend', 'out', 'index.html'));
   }
