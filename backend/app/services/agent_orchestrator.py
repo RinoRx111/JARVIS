@@ -286,20 +286,44 @@ async def execute_tools_node(state: AgentState) -> Dict[str, Any]:
                         error_count += 1
                 else:
                     # 2. Standard Registry Tools routing
-                    target_tool = plugin_manager.get_tool(tool_name)
-                    if target_tool:
-                        try:
-                            result = await target_tool.ainvoke(arguments)
-                            status = "success"
-                        except Exception as err:
-                            error_details = traceback.format_exc()
-                            result = f"Tool Execution Error: {str(err)}"
+                    if tool_name == "execute_python_tool":
+                        from app.services.websocket_manager import manager
+                        code_to_run = arguments.get("code", "")
+                        logger.info(f"Checking permission for code: {code_to_run[:100]}...")
+                        
+                        approved = await manager.wait_for_tool_approval(user_id, tool_call_id, tool_name, code_to_run)
+                        if not approved:
+                            result = "Execution Aborted: The operator denied execution privileges for this script."
+                            status = "failed"
+                        else:
+                            target_tool = plugin_manager.get_tool(tool_name)
+                            if target_tool:
+                                try:
+                                    result = await target_tool.ainvoke(arguments)
+                                    status = "success"
+                                except Exception as err:
+                                    error_details = traceback.format_exc()
+                                    result = f"Tool Execution Error: {str(err)}"
+                                    status = "failed"
+                                    error_count += 1
+                            else:
+                                result = f"Error: Tool '{tool_name}' not found."
+                                status = "failed"
+                    else:
+                        target_tool = plugin_manager.get_tool(tool_name)
+                        if target_tool:
+                            try:
+                                result = await target_tool.ainvoke(arguments)
+                                status = "success"
+                            except Exception as err:
+                                error_details = traceback.format_exc()
+                                result = f"Tool Execution Error: {str(err)}"
+                                status = "failed"
+                                error_count += 1
+                        else:
+                            result = f"Error: Tool '{tool_name}' is not recognized in PluginManager."
                             status = "failed"
                             error_count += 1
-                    else:
-                        result = f"Error: Tool '{tool_name}' is not recognized in PluginManager."
-                        status = "failed"
-                        error_count += 1
 
                 duration_ms = int((time.time() - start_time) * 1000)
 

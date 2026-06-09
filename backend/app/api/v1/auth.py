@@ -335,6 +335,10 @@ async def update_preferences(
         current_user.full_name = prefs.full_name
     if prefs.nickname is not None:
         current_user.nickname = prefs.nickname
+    if prefs.github_token is not None:
+        current_user.github_token = prefs.github_token
+    if prefs.linkedin_token is not None:
+        current_user.linkedin_token = prefs.linkedin_token
 
     db.add(current_user)
     db.commit()

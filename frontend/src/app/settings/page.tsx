@@ -13,10 +13,15 @@ export default function SettingsPage() {
     groq: ''
   });
   const [modalProvider, setModalProvider] = useState<string | null>(null);
+  const [tokenInput, setTokenInput] = useState('');
 
   useEffect(() => {
     fetchPreferences();
   }, [fetchPreferences]);
+
+  useEffect(() => {
+    setTokenInput('');
+  }, [modalProvider]);
 
   const handleSaveKeys = async () => {
     if (keys.groq) {
@@ -118,17 +123,65 @@ export default function SettingsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#080B0F]/80 backdrop-blur-sm">
           <div className="bg-[#0E1318] border border-[#1E2A35] rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
             <h3 className="text-sm font-mono font-bold uppercase tracking-widest text-[#E8EDF2] mb-2">{modalProvider} Integration</h3>
-            <p className="text-xs text-[#6B7F8E] mb-6 font-mono leading-relaxed">
-              The {modalProvider} integration is currently offline and will be compiled in a future patch.
-            </p>
-            <div className="flex justify-end">
-              <Button 
-                onClick={() => setModalProvider(null)}
-                className="bg-[#00C2FF] hover:bg-[#00C2FF]/90 text-[#080B0F] border-0 font-bold uppercase text-xs rounded-lg px-4 py-2 transition-all"
-              >
-                Dismiss
-              </Button>
-            </div>
+            
+            {(modalProvider === 'GitHub' || modalProvider === 'LinkedIn') ? (
+              <div className="space-y-4 my-4">
+                <p className="text-xs text-[#6B7F8E] font-mono leading-relaxed">
+                  Enter your {modalProvider} Personal Access Token or session cookies below to link the assistant.
+                </p>
+                <div className="space-y-2">
+                  <label className="text-xs font-mono uppercase tracking-wider text-[#6B7F8E]">
+                    {modalProvider === 'GitHub' ? 'GitHub PAT' : 'LinkedIn Cookies'}
+                  </label>
+                  <input 
+                    type="password" 
+                    value={tokenInput}
+                    onChange={(e) => setTokenInput(e.target.value)}
+                    placeholder={modalProvider === 'GitHub' ? "ghp_..." : "AQED..."}
+                    className="w-full bg-[#141B22] border border-[#1E2A35] rounded-lg p-2 text-[#E8EDF2] text-sm font-mono focus:outline-none focus:border-[#00C2FF] transition-all"
+                  />
+                </div>
+                <div className="flex justify-end gap-3 pt-2">
+                  <Button 
+                    onClick={() => setModalProvider(null)}
+                    variant="ghost"
+                    className="text-xs font-mono uppercase tracking-wider border border-[#1E2A35] text-[#6B7F8E] hover:text-[#00C2FF] rounded-lg h-9 px-4 transition-all bg-transparent"
+                  >
+                    Cancel
+                  </Button>
+                  <Button 
+                    onClick={async () => {
+                      if (!tokenInput.trim()) return;
+                      const payload = modalProvider === 'GitHub' 
+                        ? { github_token: tokenInput } 
+                        : { linkedin_token: tokenInput };
+                      const success = await store.updatePreferences(payload);
+                      if (success) {
+                        setModalProvider(null);
+                        setTokenInput('');
+                      }
+                    }}
+                    className="bg-[#00C2FF] hover:bg-[#00C2FF]/90 text-[#080B0F] border-0 font-bold uppercase text-xs rounded-lg h-9 px-4 transition-all"
+                  >
+                    Link API
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div>
+                <p className="text-xs text-[#6B7F8E] mb-6 font-mono leading-relaxed">
+                  The {modalProvider} integration is currently offline and will be compiled in a future patch.
+                </p>
+                <div className="flex justify-end">
+                  <Button 
+                    onClick={() => setModalProvider(null)}
+                    className="bg-[#00C2FF] hover:bg-[#00C2FF]/90 text-[#080B0F] border-0 font-bold uppercase text-xs rounded-lg px-4 py-2 transition-all"
+                  >
+                    Dismiss
+                  </Button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

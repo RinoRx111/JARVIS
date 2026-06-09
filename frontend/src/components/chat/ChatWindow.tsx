@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, Plus, Loader2, Volume2, VolumeX, Square, Paperclip } from 'lucide-react';
+import { Send, Mic, Plus, Loader2, Volume2, VolumeX, Square, Paperclip, ShieldAlert } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useJarvisStore } from '@/hooks/useJarvisStore';
 import { wsService } from '@/services/websocket';
@@ -19,6 +19,7 @@ export function ChatWindow() {
   const isVoiceActive = useJarvisStore((state) => state.isVoiceActive);
   const tokenUsage = useJarvisStore((state) => state.tokenUsage);
   const userPreferences = useJarvisStore((state) => state.userPreferences);
+  const pendingToolApproval = useJarvisStore((state) => state.pendingToolApproval);
   
   const setCoreStatus = useJarvisStore((state) => state.setCoreStatus);
   const addNotification = useJarvisStore((state) => state.addNotification);
@@ -244,6 +245,37 @@ export function ChatWindow() {
       {/* Input Area (pinned to bottom, max-width 780px) */}
       <div className="p-4 md:p-6 w-full shrink-0 border-t border-[#1E2A35]/30 bg-[#080B0F]/90 backdrop-blur-md z-10">
         <div className="max-w-[780px] w-full mx-auto relative">
+          {pendingToolApproval && (
+            <div className="glass-card border-[#1E2A35] bg-[#0E1318]/95 p-4 rounded-xl shadow-2xl border mb-4 animate-in fade-in slide-in-from-bottom-4 relative pointer-events-auto">
+              <div className="flex items-center gap-2 mb-3 text-[#F5A623]">
+                <ShieldAlert size={16} />
+                <span className="text-xs font-mono font-bold uppercase tracking-wider">EXECUTION PERMISSION REQUIRED</span>
+              </div>
+              <p className="text-xs text-[#6B7F8E] mb-3 leading-relaxed font-mono">
+                JARVIS wishes to compile and execute a local Python script on your host system. Review the source below:
+              </p>
+              <div className="bg-[#141B22] border border-[#1E2A35] rounded-lg p-3 max-h-40 overflow-y-auto mb-4">
+                <pre className="font-mono text-xs text-[#00C2FF] whitespace-pre-wrap">{pendingToolApproval.code}</pre>
+              </div>
+              <div className="flex justify-end gap-3">
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="text-xs font-mono uppercase tracking-wider border border-[#1E2A35] text-[#6B7F8E] hover:text-[#FF4D4D] hover:border-[#FF4D4D] h-9 px-4 rounded-lg"
+                  onClick={() => wsService.sendToolApprovalResponse(pendingToolApproval.tool_call_id, false)}
+                >
+                  ABORT
+                </Button>
+                <Button 
+                  size="sm"
+                  className="text-xs font-mono uppercase tracking-wider bg-[#00C2FF] text-[#080B0F] hover:bg-[#00C2FF]/85 h-9 px-4 rounded-lg font-bold"
+                  onClick={() => wsService.sendToolApprovalResponse(pendingToolApproval.tool_call_id, true)}
+                >
+                  EXECUTE
+                </Button>
+              </div>
+            </div>
+          )}
           <form onSubmit={handleSend} className="relative flex items-end gap-2 bg-[#0E1318] border border-[#1E2A35] rounded-xl p-2 focus-within:border-[#00C2FF]/50 focus-within:shadow-[0_0_12px_rgba(0,194,255,0.15)] transition-all">
             
             <button 

@@ -288,6 +288,13 @@ async def websocket_chat_endpoint(websocket: WebSocket, db: Session = Depends(ge
                             current_task.cancel()
                             await websocket.send_json({"type": "status", "message": "Generation stopped by user."})
                         continue
+                    elif parsed.get("type") == "tool_approval_response":
+                        tool_call_id = parsed.get("tool_call_id")
+                        approved = parsed.get("approved", False)
+                        fut = manager.get_pending_approval(tool_call_id)
+                        if fut and not fut.done():
+                            fut.set_result(approved)
+                        continue
                 except Exception:
                     pass
             

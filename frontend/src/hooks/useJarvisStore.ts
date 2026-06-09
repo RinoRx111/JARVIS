@@ -97,6 +97,8 @@ interface JarvisState {
   addToast: (msg: string) => void;
   removeToast: (id: string) => void;
   updateSystemStats: () => void;
+  pendingToolApproval: { tool_call_id: string; tool_name: string; code: string } | null;
+  setPendingToolApproval: (val: { tool_call_id: string; tool_name: string; code: string } | null) => void;
 
   // Chat/Voice State
   conversations: any[];
@@ -344,6 +346,8 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
   removeToast: (id) => {
     set({ activeToasts: get().activeToasts.filter((t) => t.id !== id) });
   },
+  pendingToolApproval: null,
+  setPendingToolApproval: (val) => set({ pendingToolApproval: val }),
   updateSystemStats: () => {
     // Holographic stat fluctuation
     set({

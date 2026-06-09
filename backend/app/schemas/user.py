@@ -56,6 +56,8 @@ class UserPreferencesUpdate(BaseModel):
     gemini_api_key: Optional[str] = None
     groq_api_key: Optional[str] = None
     ollama_model: Optional[str] = None
+    github_token: Optional[str] = None
+    linkedin_token: Optional[str] = None
 
 class Token(BaseModel):
     access_token: str

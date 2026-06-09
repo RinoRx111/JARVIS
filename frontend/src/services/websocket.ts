@@ -69,6 +69,13 @@ class WebSocketService {
           }
         } else if (data.type === 'plan') {
           store.setPlan(data.plan);
+        } else if (data.type === 'tool_approval_request') {
+          store.setPendingToolApproval({
+            tool_call_id: data.tool_call_id,
+            tool_name: data.tool_name,
+            code: data.code
+          });
+          store.setCoreStatus('STANDBY');
         } else if (data.type === 'proactive_alert') {
           store.addAlert({
             title: data.title,
@@ -159,6 +166,18 @@ class WebSocketService {
       useJarvisStore.getState().addNotification("Uplink inactive. Cannot stream text.");
       const errorMessage = { id: crypto.randomUUID(), role: 'system', content: '[ERROR] WebSocket connection is offline. Cannot stream text.', created_at: new Date().toISOString() };
       useJarvisStore.getState().addMessage(errorMessage as any);
+    }
+  }
+
+  sendToolApprovalResponse(tool_call_id: string, approved: boolean) {
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify({
+        type: 'tool_approval_response',
+        tool_call_id,
+        approved
+      }));
+      useJarvisStore.getState().setPendingToolApproval(null);
+      useJarvisStore.getState().setCoreStatus('THINKING');
     }
   }
 }
