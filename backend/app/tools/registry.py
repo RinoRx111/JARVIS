@@ -12,15 +12,17 @@ from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
-# Helper to verify paths are inside safe workspace directory
+# Helper to verify paths (Allows absolute paths for full desktop/host access)
 def _get_safe_path(filepath: str) -> str:
     from pathlib import Path
+    filepath_expanded = os.path.expanduser(filepath)
+    path = Path(filepath_expanded)
+    if path.is_absolute():
+        return str(path.resolve())
+    
+    # Fallback: resolve relative to workspace directory
     base_dir = Path(settings.WORKSPACE_DIR).resolve()
-    target_path = Path(base_dir / filepath).resolve()
-    try:
-        target_path.relative_to(base_dir)
-    except ValueError:
-        raise PermissionError(f"Access denied: path '{filepath}' is outside workspace boundaries.")
+    target_path = Path(base_dir / filepath_expanded).resolve()
     return str(target_path)
 
 # --- AUTOMATION TOOLS ---
@@ -282,10 +284,6 @@ agent_tools = [
     list_files_tool,
     read_pdf_tool,
     open_application_tool,
-    gmail_list_emails_tool,
-    gmail_send_email_tool,
-    calendar_list_events_tool,
-    calendar_create_event_tool,
     create_reminder_tool,
     list_reminders_tool
 ] + desktop_tools
@@ -294,12 +292,6 @@ agent_tools = [
 from app.tools.plugin_manager import plugin_manager
 for t in agent_tools:
     plugin_manager.register_tool(t)
-
-# Register custom Google API wrapper handlers that need context
-plugin_manager.register_custom_handler("gmail_list_emails_tool", invoke_gmail_list)
-plugin_manager.register_custom_handler("gmail_send_email_tool", invoke_gmail_send)
-plugin_manager.register_custom_handler("calendar_list_events_tool", invoke_calendar_list)
-plugin_manager.register_custom_handler("calendar_create_event_tool", invoke_calendar_create)
 
 # Register custom handlers for reminders
 plugin_manager.register_custom_handler("create_reminder_tool", invoke_create_reminder)

@@ -1,6 +1,6 @@
 import httpx
 import logging
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlmodel import Session, select
@@ -16,33 +16,27 @@ logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/v1/auth/login", auto_error=False)
 
 # Dependency helper to fetch active user
 def get_current_user(
     db: Session = Depends(get_db),
-    token: str = Depends(oauth2_scheme)
+    token: Optional[str] = Depends(oauth2_scheme)
 ) -> User:
-    credentials_exception = HTTPException(
-        status_code=status.HTTP_401_UNAUTHORIZED,
-        detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    
-    payload = decode_token(token)
-    if not payload or payload.get("type") != "access":
-        raise credentials_exception
-        
-    user_id: str = payload.get("sub")
-    if user_id is None:
-        raise credentials_exception
-        
-    user = db.exec(select(User).where(User.id == int(user_id))).first()
+    # Auto-login fallback for local desktop mode: always return local master account
+    user = db.exec(select(User)).first()
     if not user:
-        raise credentials_exception
-    if not user.is_active:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Inactive user")
-        
+        user = User(
+            email="local_user@jarvis.local",
+            hashed_password="local_password",
+            full_name="Local Master",
+            nickname="Master",
+            is_active=True,
+            role="admin"
+        )
+        db.add(user)
+        db.commit()
+        db.refresh(user)
     return user
 
 class RoleChecker:

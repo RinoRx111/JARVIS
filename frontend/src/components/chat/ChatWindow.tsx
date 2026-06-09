@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Send, Mic, Plus, Loader2, Volume2, VolumeX, Square } from 'lucide-react';
+import { Send, Mic, Plus, Loader2, Volume2, VolumeX, Square, Paperclip } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { useJarvisStore } from '@/hooks/useJarvisStore';
 import { wsService } from '@/services/websocket';
@@ -40,6 +40,19 @@ export function ChatWindow() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  const chatFileInputRef = useRef<HTMLInputElement>(null);
+  const handleChatFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const file = e.target.files[0];
+      const success = await store.uploadFile(file);
+      if (success) {
+        addNotification(`Uploaded file: ${file.name} to assistant workspace.`);
+      } else {
+        addNotification(`Failed to upload file: ${file.name}.`);
+      }
+    }
+  };
 
   const startRecording = async () => {
     try {
@@ -151,17 +164,6 @@ export function ChatWindow() {
           >
             {isVoiceActive ? <Volume2 size={18} /> : <VolumeX size={18} />}
           </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => {
-              logout();
-            }}
-            className="text-muted-foreground hover:text-destructive"
-            title="Sign Out"
-          >
-            Sign Out
-          </Button>
           <Button variant="glass" size="sm" onClick={() => startNewChat()}>
             <Plus size={16} className="mr-2" />
             New Chat
@@ -242,6 +244,22 @@ export function ChatWindow() {
               <Mic size={20} />
             </button>
             
+            <input
+              type="file"
+              ref={chatFileInputRef}
+              onChange={handleChatFileUpload}
+              className="hidden"
+            />
+
+            <button 
+              type="button" 
+              onClick={() => chatFileInputRef.current?.click()}
+              title="Attach a file"
+              className="p-3 text-muted-foreground hover:text-white transition-colors shrink-0"
+            >
+              <Paperclip size={20} />
+            </button>
+
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -279,7 +297,7 @@ export function ChatWindow() {
           </form>
           
           <div className="flex justify-between items-center mt-2 px-1">
-            <span className="text-[10px] text-muted-foreground">JARVIS OS v2.0 &bull; AI can make mistakes. Consider verifying important information.</span>
+            <span className="text-[10px] text-muted-foreground">JARVIS Assistant v2.0 &bull; AI can make mistakes. Consider verifying important information.</span>
             
             {/* Token Counter Widget */}
             <div className="flex items-center space-x-3 text-[10px] font-mono text-cyan-500/60 uppercase tracking-widest bg-cyan-500/5 px-3 py-1 rounded-full border border-cyan-500/20">

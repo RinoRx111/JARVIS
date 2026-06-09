@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useJarvisStore } from '@/hooks/useJarvisStore';
 import { Button } from '@/components/ui/button';
@@ -9,6 +10,7 @@ import { Lock, User as UserIcon, ShieldAlert, Loader2, Mail } from 'lucide-react
 import { API_URL } from '@/services/api';
 
 export function AuthOverlay() {
+  const pathname = usePathname();
   const store = useJarvisStore();
   const checkSetupStatus = useJarvisStore((state) => state.checkSetupStatus);
   const checkAuth = useJarvisStore((state) => state.checkAuth);
@@ -24,6 +26,14 @@ export function AuthOverlay() {
     checkAuth();
   }, [checkSetupStatus, checkAuth]);
 
+  // Auto-login with user's provided credentials if setup is done but not authenticated
+  useEffect(() => {
+    if (!store.token && !store.authLoading && !store.needsSetup) {
+      console.log("Auto-logging in with provided credentials...");
+      store.login("aditiyamamgain13@gmail.com", "aditya2006.");
+    }
+  }, [store.token, store.authLoading, store.needsSetup]);
+
   // Force register mode if setup is needed
   useEffect(() => {
     if (store.needsSetup) {
@@ -38,6 +48,9 @@ export function AuthOverlay() {
       </div>
     );
   }
+
+  // Do not show overlay on OAuth callback page
+  if (pathname === '/auth/callback') return null;
 
   // If already authenticated, do not render overlay
   if (store.token && store.user) return null;

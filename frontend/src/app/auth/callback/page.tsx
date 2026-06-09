@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useState, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useJarvisStore } from '@/hooks/useJarvisStore';
 import { Loader2 } from 'lucide-react';
@@ -11,6 +11,7 @@ function AuthCallbackInner() {
   const searchParams = useSearchParams();
   const store = useJarvisStore();
   const [error, setError] = useState<string | null>(null);
+  const hasCalled = useRef(false);
 
   useEffect(() => {
     const code = searchParams.get('code');
@@ -19,6 +20,9 @@ function AuthCallbackInner() {
       setError("No authorization code found in URL.");
       return;
     }
+
+    if (hasCalled.current) return;
+    hasCalled.current = true;
 
     const processOAuth = async () => {
       try {

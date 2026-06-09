@@ -15,8 +15,8 @@ class CodeSandbox:
 
     def execute_python_code(self, code: str, timeout_seconds: int = 15) -> Dict[str, Any]:
         """
-        Executes raw Python code inside a sandboxed environment.
-        Attempts to run via Docker if available, otherwise falls back to a restricted subprocess.
+        Executes raw Python code inside the local system environment.
+        Directly executes local subprocess to allow access to user's files and desktop.
         """
         script_id = str(uuid.uuid4())
         filename = f"sandbox_script_{script_id}.py"
@@ -28,48 +28,8 @@ class CodeSandbox:
 
         logger.info(f"Written sandbox script to {filepath}")
 
-        # Try to run via Docker first
-        try:
-            import docker
-            client = docker.from_env()
-            # Verify Docker daemon is running
-            client.ping()
-
-            logger.info("Docker daemon detected. Starting sandbox container...")
-            
-            # Map workspace folder to container mount
-            volumes = {self.workspace: {'bind': '/workspace', 'mode': 'rw'}}
-            
-            # Execute python inside container
-            container_cmd = f"python /workspace/{filename}"
-            
-            container = client.containers.run(
-                image="python:3.11-slim",
-                command=container_cmd,
-                volumes=volumes,
-                working_dir="/workspace",
-                network_mode="none", # Disable internet inside container
-                mem_limit="256m",     # Limit memory usage
-                nano_cpus=500000000, # 0.5 CPU core limit (500000000 nanoseconds = 50% CPU)
-                detach=False,
-                stdout=True,
-                stderr=True,
-                remove=True,
-                timeout=timeout_seconds
-            )
-            
-            # Remove script after run
-            self._cleanup(filepath)
-            
-            return {
-                "status": "success",
-                "stdout": container.decode("utf-8"),
-                "stderr": "",
-                "execution_mode": "docker"
-            }
-        except Exception as e:
-            logger.warning(f"Docker sandbox execution failed or unavailable: {e}. Falling back to subprocess execution.")
-            return self._execute_local_subprocess(filepath, filename, timeout_seconds)
+        # Directly run using host's python environment
+        return self._execute_local_subprocess(filepath, filename, timeout_seconds)
 
     def _execute_local_subprocess(self, filepath: str, filename: str, timeout: int) -> Dict[str, Any]:
         """Runs the python script inside a local subprocess with timeout controls."""

@@ -75,7 +75,6 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4 max-h-[600px] overflow-y-auto">
               {[
-                { id: "google", name: "Google Workspace", desc: "Mail, Calendar, Drive", connected: !!store.userPreferences?.has_google_token },
                 { id: "github", name: "GitHub", desc: "Repositories, PRs, Issues", connected: !!store.userPreferences?.has_github_token },
                 { id: "notion", name: "Notion", desc: "Workspace, Pages, Databases", connected: !!store.userPreferences?.has_notion_token },
                 { id: "linkedin", name: "LinkedIn", desc: "Profile Insights, Resume Sync", connected: !!store.userPreferences?.has_linkedin_token },
@@ -96,18 +95,7 @@ export default function SettingsPage() {
                     className={integration.connected ? "bg-green-600 hover:bg-green-700 text-white" : ""}
                     onClick={async () => {
                       if (integration.connected) return;
-                      if (integration.id === "google") {
-                        try {
-                          const res = await api.get('/auth/google/url');
-                          if (res.data?.url) {
-                            window.location.href = res.data.url;
-                          }
-                        } catch (e) {
-                          alert("Google Workspace integration failed to initiate.");
-                        }
-                      } else {
-                        setModalProvider(integration.name);
-                      }
+                      setModalProvider(integration.name);
                     }}
                   >
                     {integration.connected ? "Connected" : "Connect"}

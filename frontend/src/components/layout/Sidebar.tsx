@@ -29,8 +29,6 @@ const navItems = [
   { name: 'Tasks', icon: CheckSquare, href: '/tasks' },
   { name: 'Agents', icon: Bot, href: '/agents' },
   { name: 'Files', icon: FolderSearch, href: '/files' },
-  { name: 'Email', icon: Mail, href: '/email' },
-  { name: 'Calendar', icon: CalendarDays, href: '/calendar' },
   { name: 'Automations', icon: Zap, href: '/automations' },
   { name: 'Analytics', icon: Activity, href: '/analytics' },
 ];
@@ -99,17 +97,6 @@ export function Sidebar() {
       </nav>
 
       <div className="p-3 border-t border-white/5">
-        <Link href="/profile">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-muted-foreground hover:bg-white/5 hover:text-white">
-            <UserCircle size={20} className="min-w-[20px]" />
-            <motion.span 
-              animate={{ opacity: isExpanded ? 1 : 0 }}
-              className={cn("font-medium text-sm whitespace-nowrap", !isExpanded && "hidden")}
-            >
-              Profile
-            </motion.span>
-          </div>
-        </Link>
         <Link href="/settings">
           <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-muted-foreground hover:bg-white/5 hover:text-white">
             <Settings size={20} className="min-w-[20px]" />
@@ -121,18 +108,6 @@ export function Sidebar() {
             </motion.span>
           </div>
         </Link>
-        <div 
-          onClick={() => store.logout()}
-          className="flex items-center gap-3 px-3 py-2.5 mt-1 cursor-pointer rounded-lg transition-all duration-200 text-destructive/70 hover:bg-destructive/10 hover:text-destructive"
-        >
-          <LogOut size={20} className="min-w-[20px]" />
-          <motion.span 
-            animate={{ opacity: isExpanded ? 1 : 0 }}
-            className={cn("font-medium text-sm whitespace-nowrap", !isExpanded && "hidden")}
-          >
-            Sign Out
-          </motion.span>
-        </div>
       </div>
     </motion.aside>
   );

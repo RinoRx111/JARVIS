@@ -241,31 +241,23 @@ async def websocket_chat_endpoint(websocket: WebSocket, db: Session = Depends(ge
     await websocket.accept()
     
     try:
-        # Wait for the first message which must contain the auth token
+        # Wait for the first message (optionally contains auth token)
         auth_data = await websocket.receive_json()
-        if not isinstance(auth_data, dict) or "token" not in auth_data:
-            await websocket.send_json({"error": "Missing authentication token", "type": "error"})
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-            return
-            
-        token = auth_data["token"]
-        payload = decode_token(token)
-        if not payload or payload.get("type") != "access":
-            await websocket.send_json({"error": "Authentication failed", "type": "error"})
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-            return
-            
-        user_id = payload.get("sub")
-        if not user_id:
-            await websocket.send_json({"error": "Authentication failed", "type": "error"})
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-            return
-            
-        user = db.exec(select(User).where(User.id == int(user_id))).first()
+        
+        # Local desktop mode fallback: always associate with local master user
+        user = db.exec(select(User)).first()
         if not user:
-            await websocket.send_json({"error": "Authentication failed", "type": "error"})
-            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-            return
+            user = User(
+                email="local_user@jarvis.local",
+                hashed_password="local_password",
+                full_name="Local Master",
+                nickname="Master",
+                is_active=True,
+                role="admin"
+            )
+            db.add(user)
+            db.commit()
+            db.refresh(user)
             
     except Exception as e:
         logger.error(f"WebSocket handshake/auth error: {e}")

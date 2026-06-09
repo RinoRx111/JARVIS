@@ -44,6 +44,77 @@ def extract_text_from_file(file_path: str) -> str:
         df = pd.read_csv(file_path)
         # Represent CSV rows as textual representation
         return df.to_string(index=False)
+    elif filename.endswith((".xlsx", ".xls")):
+        import pandas as pd
+        try:
+            df = pd.read_excel(file_path)
+            return df.to_string(index=False)
+        except Exception as e:
+            return f"[Excel file reading error: {e}]"
+    elif filename.endswith(".pptx"):
+        try:
+            import pptx
+            prs = pptx.Presentation(file_path)
+            text = []
+            for slide in prs.slides:
+                for shape in slide.shapes:
+                    if hasattr(shape, "text") and shape.text:
+                        text.append(shape.text)
+            return "\n".join(text)
+        except Exception as e:
+            return f"[PowerPoint presentation parsing error: {e}]"
+    elif filename.endswith((".png", ".jpg", ".jpeg", ".bmp", ".webp", ".gif")):
+        from PIL import Image
+        from app.core.config import settings
+        img = Image.open(file_path)
+        info = f"Image File: {filename}\nFormat: {img.format}\nSize: {img.size}\nMode: {img.mode}\n"
+        
+        # Multimodal Vision Analysis fallback
+        if settings.GEMINI_API_KEY:
+            try:
+                import google.generativeai as genai
+                genai.configure(api_key=settings.GEMINI_API_KEY)
+                model = genai.GenerativeModel('gemini-1.5-flash')
+                response = model.generate_content([
+                    "Please provide a highly detailed description of this image for an AI assistant. List all text, objects, and visual context you can see.",
+                    img
+                ])
+                info += f"Visual Description:\n{response.text}"
+                return info
+            except Exception as e:
+                logger.error(f"Gemini image description failed: {e}")
+                
+        if settings.OPENAI_API_KEY:
+            try:
+                import base64
+                from openai import OpenAI
+                client = OpenAI(api_key=settings.OPENAI_API_KEY)
+                with open(file_path, "rb") as image_file:
+                    base64_image = base64.b64encode(image_file.read()).decode('utf-8')
+                
+                response = client.chat.completions.create(
+                    model="gpt-4o",
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": [
+                                {"type": "text", "text": "Please provide a highly detailed description of this image for an AI assistant. List all text, objects, and visual context you can see."},
+                                {
+                                    "type": "image_url",
+                                    "image_url": {
+                                        "url": f"data:image/jpeg;base64,{base64_image}"
+                                    }
+                                }
+                            ]
+                        }
+                    ]
+                )
+                info += f"Visual Description:\n{response.choices[0].message.content}"
+                return info
+            except Exception as e:
+                logger.error(f"OpenAI image description failed: {e}")
+                
+        return info + "\nVisual Description: [Vision API Key not configured. Visual description omitted.]"
     elif filename.endswith(".txt") or filename.endswith(".md"):
         with open(file_path, "r", encoding="utf-8", errors="ignore") as f:
             return f.read()
