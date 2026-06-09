@@ -490,6 +490,9 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
         logger.error(f"WebSocket graph streaming error: {err}\n{traceback.format_exc()}")
         err_str = str(err).lower()
         
+        # Transmit exact error details to frontend system message box
+        await websocket.send_json({"error": f"Orchestrator error: {str(err)}"})
+        
         # Proactive Fallback
         if "rate_limit" in err_str or "quota" in err_str or "auth" in err_str or "api_key" in err_str or "401" in err_str or "429" in err_str or "key" in err_str:
             fallback_msg = "\n\nSir, the cloud provider has failed or quota is exceeded. Would you like me to switch to the local Ollama model to continue?"
@@ -507,6 +510,7 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
         except Exception as err:
             import traceback
             logger.error(f"Fallback graph execution crash: {err}\n{traceback.format_exc()}")
+            await websocket.send_json({"error": f"Fallback execution crash: {str(err)}"})
             agent_reply = f"API Error: {repr(err)}"
 
     # Synthesize audio speech
