@@ -128,56 +128,18 @@ def get_ollama_client(user: Optional[User] = None, temperature: float = 0.7) -> 
 
 def route_llm(task_type: Optional[str] = None, temperature: float = 0.7, user: Optional[User] = None) -> BaseChatModel:
     """
-    Selects and returns the best available model class based on task metadata and user preferences.
+    Selects and returns the best available model class based on task metadata.
+    Always uses the Groq provider.
     """
-    # 0. Check for explicit LLM provider override from user preferences
-    provider = user.preferred_model if user and user.preferred_model else settings.DEFAULT_LLM_PROVIDER
-    provider = provider.lower()
-    
-    # Simple mapping of raw 'provider' string which could be an exact model like 'gpt-4o' or 'claude-3.5-sonnet'
-    # to the top-level provider names.
-    if "gpt" in provider or "openai" in provider:
-        openai = get_openai_client(user, temperature)
-        if openai: return openai
-    elif "claude" in provider or "anthropic" in provider:
-        claude = get_claude_client(user, temperature)
-        if claude: return claude
-    elif "gemini" in provider:
-        gemini = get_gemini_client(user, temperature)
-        if gemini: return gemini
-    elif "llama" in provider or "groq" in provider:
-        groq = get_groq_client(user, temperature)
-        if groq: return groq
-    elif "ollama" in provider:
-        ollama = get_ollama_client(user, temperature)
-        if ollama: return ollama
-
-    # 1. Routing by Task Type if preferred provider wasn't available or matched
+    # Route fast tasks to llama-3.1-8b-instant
     if task_type == "fast":
         fast_groq = get_fast_groq_client(user, temperature)
-        if fast_groq: return fast_groq
+        if fast_groq:
+            return fast_groq
             
-    if task_type in ("code", "planning"):
-        claude = get_claude_client(user, temperature)
-        if claude: return claude
+    # Default routing to llama-3.3-70b-versatile
+    groq = get_groq_client(user, temperature)
+    if groq:
+        return groq
         
-    elif task_type in ("vision", "pdf_reading", "multimodal"):
-        gemini = get_gemini_client(user, temperature)
-        if gemini: return gemini
-
-    # 2. General default fallbacks in order of strength
-    openai = get_openai_client(user, temperature)
-    if openai: return openai
-
-    gemini = get_gemini_client(user, temperature)
-    if gemini: return gemini
-
-    claude = get_claude_client(user, temperature)
-    if claude: return claude
-
-    # 3. Local model fallback
-    logger.info("No cloud credentials found or failed. Routing to local Ollama runtime.")
-    fallback = get_ollama_client(user, temperature)
-    if fallback: return fallback
-        
-    raise ValueError("No LLM provider is configured or available. Please add API keys in the settings or start Ollama.")
+    raise ValueError("Groq LLM provider is not configured or available. Please configure your Groq API key.")

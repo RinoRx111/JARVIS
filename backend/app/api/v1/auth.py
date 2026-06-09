@@ -281,12 +281,12 @@ def get_me(current_user: User = Depends(get_current_user)):
         is_active=current_user.is_active,
         role=current_user.role,
         created_at=current_user.created_at,
-        preferred_model=current_user.preferred_model,
+        preferred_model="groq",
         token_limit=current_user.token_limit,
-        ollama_model=current_user.ollama_model,
-        has_openai_key=bool(current_user.openai_api_key),
-        has_anthropic_key=bool(current_user.anthropic_api_key),
-        has_gemini_key=bool(current_user.gemini_api_key),
+        ollama_model=None,
+        has_openai_key=False,
+        has_anthropic_key=False,
+        has_gemini_key=False,
         has_groq_key=bool(current_user.groq_api_key),
         has_github_token=bool(current_user.github_token),
         has_notion_token=bool(current_user.notion_token),
@@ -301,15 +301,7 @@ def get_me(current_user: User = Depends(get_current_user)):
 
 @router.get("/models/local")
 async def get_local_models():
-    """Fetches list of available models from local Ollama instance."""
-    try:
-        async with httpx.AsyncClient() as client:
-            res = await client.get(f"{settings.OLLAMA_API_URL}/api/tags", timeout=3.0)
-            if res.status_code == 200:
-                data = res.json()
-                return {"models": [model["name"] for model in data.get("models", [])]}
-    except Exception as e:
-        logger.warning(f"Ollama detection failed: {e}")
+    """Local model discovery disabled - Groq only mode active."""
     return {"models": []}
 
 from app.schemas.user import UserPreferencesUpdate
@@ -319,19 +311,7 @@ async def _validate_api_key(provider: str, key: str) -> bool:
     if not key:
         return True
     try:
-        if provider == "openai":
-            async with httpx.AsyncClient() as client:
-                res = await client.get("https://api.openai.com/v1/models", headers={"Authorization": f"Bearer {key}"})
-                return res.status_code == 200
-        elif provider == "anthropic":
-            async with httpx.AsyncClient() as client:
-                res = await client.get("https://api.anthropic.com/v1/models", headers={"x-api-key": key, "anthropic-version": "2023-06-01"})
-                return res.status_code == 200
-        elif provider == "gemini":
-            async with httpx.AsyncClient() as client:
-                res = await client.get(f"https://generativelanguage.googleapis.com/v1beta/models?key={key}")
-                return res.status_code == 200
-        elif provider == "groq":
+        if provider == "groq":
             async with httpx.AsyncClient() as client:
                 res = await client.get("https://api.groq.com/openai/v1/models", headers={"Authorization": f"Bearer {key}"})
                 return res.status_code == 200
@@ -346,33 +326,17 @@ async def update_preferences(
     current_user: User = Depends(get_current_user)
 ):
     """Updates user LLM preferences and validates API keys."""
-    # Validate keys before saving
-    if prefs.openai_api_key and prefs.openai_api_key != current_user.openai_api_key:
-        if not await _validate_api_key("openai", prefs.openai_api_key):
-            raise HTTPException(status_code=400, detail="Invalid OpenAI API Key")
-        current_user.openai_api_key = encrypt_key(prefs.openai_api_key)
-        
-    if prefs.anthropic_api_key and prefs.anthropic_api_key != current_user.anthropic_api_key:
-        if not await _validate_api_key("anthropic", prefs.anthropic_api_key):
-            raise HTTPException(status_code=400, detail="Invalid Anthropic API Key")
-        current_user.anthropic_api_key = encrypt_key(prefs.anthropic_api_key)
-        
-    if prefs.gemini_api_key and prefs.gemini_api_key != current_user.gemini_api_key:
-        if not await _validate_api_key("gemini", prefs.gemini_api_key):
-            raise HTTPException(status_code=400, detail="Invalid Gemini API Key")
-        current_user.gemini_api_key = encrypt_key(prefs.gemini_api_key)
-        
     if prefs.groq_api_key and prefs.groq_api_key != current_user.groq_api_key:
         if not await _validate_api_key("groq", prefs.groq_api_key):
             raise HTTPException(status_code=400, detail="Invalid Groq API Key")
         current_user.groq_api_key = encrypt_key(prefs.groq_api_key)
 
-    if prefs.preferred_model is not None:
-        current_user.preferred_model = prefs.preferred_model
+    # Force to Groq
+    current_user.preferred_model = "groq"
+    current_user.ollama_model = None
+
     if prefs.token_limit is not None:
         current_user.token_limit = prefs.token_limit
-    if prefs.ollama_model is not None:
-        current_user.ollama_model = prefs.ollama_model
     if prefs.full_name is not None:
         current_user.full_name = prefs.full_name
     if prefs.nickname is not None:
@@ -390,12 +354,12 @@ async def update_preferences(
         is_active=current_user.is_active,
         role=current_user.role,
         created_at=current_user.created_at,
-        preferred_model=current_user.preferred_model,
+        preferred_model="groq",
         token_limit=current_user.token_limit,
-        ollama_model=current_user.ollama_model,
-        has_openai_key=bool(current_user.openai_api_key),
-        has_anthropic_key=bool(current_user.anthropic_api_key),
-        has_gemini_key=bool(current_user.gemini_api_key),
+        ollama_model=None,
+        has_openai_key=False,
+        has_anthropic_key=False,
+        has_gemini_key=False,
         has_groq_key=bool(current_user.groq_api_key),
         has_github_token=bool(current_user.github_token),
         has_notion_token=bool(current_user.notion_token),

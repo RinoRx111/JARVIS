@@ -8,11 +8,12 @@ import { Button } from '@/components/ui/button';
 
 export default function FilesPage() {
   const store = useJarvisStore();
+  const fetchFiles = useJarvisStore((state) => state.fetchFiles);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    store.fetchFiles();
-  }, []);
+    fetchFiles();
+  }, [fetchFiles]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {

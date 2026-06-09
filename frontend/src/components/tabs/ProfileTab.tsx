@@ -7,6 +7,7 @@ import { useJarvisStore } from '../../hooks/useJarvisStore';
 
 export default function ProfileTab() {
   const store = useJarvisStore();
+  const fetchPreferences = useJarvisStore((state) => state.fetchPreferences);
   const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({
     full_name: '',
@@ -14,8 +15,8 @@ export default function ProfileTab() {
   });
 
   useEffect(() => {
-    store.fetchPreferences();
-  }, []);
+    fetchPreferences();
+  }, [fetchPreferences]);
 
   useEffect(() => {
     if (store.userPreferences) {
@@ -33,14 +34,7 @@ export default function ProfileTab() {
   };
 
   const getActiveModelName = () => {
-    const model = store.userPreferences?.preferred_model;
-    if (!model) return 'Unknown';
-    if (model.includes('gpt')) return 'OpenAI GPT';
-    if (model.includes('claude')) return 'Anthropic Claude';
-    if (model.includes('gemini')) return 'Google Gemini';
-    if (model.includes('llama') || model.includes('groq')) return 'Groq Llama';
-    if (model === 'ollama') return 'Local Ollama';
-    return model;
+    return 'Groq Llama';
   };
 
   return (
@@ -122,7 +116,6 @@ export default function ProfileTab() {
                 <Activity size={12} className="mr-2" /> Active Reasoning Engine
               </h4>
               <p className="text-xl text-white font-mono">{getActiveModelName()}</p>
-              <p className="text-xs text-cyan-500/50 mt-1">{store.userPreferences?.preferred_model}</p>
             </div>
 
             <div>
@@ -131,33 +124,6 @@ export default function ProfileTab() {
               </h4>
               <div className="space-y-2">
                 
-                <div className={`flex items-center justify-between p-2 rounded border ${store.userPreferences?.has_openai_key ? 'border-green-500/30 bg-green-500/10' : 'border-white/5 bg-white/5'}`}>
-                  <span className="text-xs text-white/80 flex items-center"><Link2 size={12} className="mr-2 opacity-50"/> OpenAI</span>
-                  {store.userPreferences?.has_openai_key ? (
-                    <span className="text-[10px] text-green-400 uppercase tracking-wider font-bold">Linked</span>
-                  ) : (
-                    <span className="text-[10px] text-white/30 uppercase tracking-wider">Unlinked</span>
-                  )}
-                </div>
-
-                <div className={`flex items-center justify-between p-2 rounded border ${store.userPreferences?.has_anthropic_key ? 'border-green-500/30 bg-green-500/10' : 'border-white/5 bg-white/5'}`}>
-                  <span className="text-xs text-white/80 flex items-center"><Link2 size={12} className="mr-2 opacity-50"/> Anthropic Claude</span>
-                  {store.userPreferences?.has_anthropic_key ? (
-                    <span className="text-[10px] text-green-400 uppercase tracking-wider font-bold">Linked</span>
-                  ) : (
-                    <span className="text-[10px] text-white/30 uppercase tracking-wider">Unlinked</span>
-                  )}
-                </div>
-
-                <div className={`flex items-center justify-between p-2 rounded border ${store.userPreferences?.has_gemini_key ? 'border-green-500/30 bg-green-500/10' : 'border-white/5 bg-white/5'}`}>
-                  <span className="text-xs text-white/80 flex items-center"><Link2 size={12} className="mr-2 opacity-50"/> Google Gemini</span>
-                  {store.userPreferences?.has_gemini_key ? (
-                    <span className="text-[10px] text-green-400 uppercase tracking-wider font-bold">Linked</span>
-                  ) : (
-                    <span className="text-[10px] text-white/30 uppercase tracking-wider">Unlinked</span>
-                  )}
-                </div>
-
                 <div className={`flex items-center justify-between p-2 rounded border ${store.userPreferences?.has_groq_key ? 'border-green-500/30 bg-green-500/10' : 'border-white/5 bg-white/5'}`}>
                   <span className="text-xs text-white/80 flex items-center"><Link2 size={12} className="mr-2 opacity-50"/> Groq Llama</span>
                   {store.userPreferences?.has_groq_key ? (

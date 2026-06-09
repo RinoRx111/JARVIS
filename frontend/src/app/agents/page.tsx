@@ -6,10 +6,11 @@ import { useJarvisStore } from "@/hooks/useJarvisStore";
 
 export default function AgentsPage() {
   const store = useJarvisStore();
+  const fetchAgentConfig = useJarvisStore((state) => state.fetchAgentConfig);
   
   useEffect(() => {
-    store.fetchAgentConfig();
-  }, []);
+    fetchAgentConfig();
+  }, [fetchAgentConfig]);
 
   const config = store.agentConfig || {};
   

@@ -8,15 +8,17 @@ import { Button } from '@/components/ui/button';
 
 export default function EmailPage() {
   const store = useJarvisStore();
+  const fetchEmails = useJarvisStore((state) => state.fetchEmails);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    handleRefresh();
-  }, []);
+    setLoading(true);
+    fetchEmails().finally(() => setLoading(false));
+  }, [fetchEmails]);
 
   const handleRefresh = async () => {
     setLoading(true);
-    await store.fetchEmails();
+    await fetchEmails();
     setLoading(false);
   };
 

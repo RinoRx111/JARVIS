@@ -8,10 +8,11 @@ import { Button } from '@/components/ui/button';
 
 export default function CalendarPage() {
   const store = useJarvisStore();
+  const fetchEvents = useJarvisStore((state) => state.fetchEvents);
 
   useEffect(() => {
-    store.fetchEvents();
-  }, []);
+    fetchEvents();
+  }, [fetchEvents]);
 
   return (
     <div className="p-6 md:p-12 w-full h-full flex flex-col gap-6 overflow-y-auto">

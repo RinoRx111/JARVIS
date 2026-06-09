@@ -1,6 +1,6 @@
 import os
-from typing import Optional
-from pydantic import Field, model_validator
+from typing import Any, Optional
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
@@ -58,6 +58,17 @@ class Settings(BaseSettings):
     WORKSPACE_DIR: str = "/tmp/jarvis_workspace"
     PLAYWRIGHT_HEADLESS: bool = True
     PLAYWRIGHT_TIMEOUT: int = 30000
+
+    @field_validator("DEBUG", "PLAYWRIGHT_HEADLESS", mode="before")
+    @classmethod
+    def parse_bool_env(cls, value: Any) -> Any:
+        if isinstance(value, str):
+            normalized = value.strip().lower()
+            if normalized in {"true", "1", "yes", "y", "on", "debug", "development", "dev"}:
+                return True
+            if normalized in {"false", "0", "no", "n", "off", "release", "production", "prod"}:
+                return False
+        return value
 
     @model_validator(mode="after")
     def sanitize_placeholders(self) -> "Settings":

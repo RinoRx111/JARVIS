@@ -8,10 +8,11 @@ import { Badge } from '@/components/ui/badge';
 
 export default function TasksPage() {
   const store = useJarvisStore();
+  const fetchAgentTasks = useJarvisStore((state) => state.fetchAgentTasks);
 
   useEffect(() => {
-    store.fetchAgentTasks();
-  }, []);
+    fetchAgentTasks();
+  }, [fetchAgentTasks]);
 
   const getStatusIcon = (status: string) => {
     switch(status) {

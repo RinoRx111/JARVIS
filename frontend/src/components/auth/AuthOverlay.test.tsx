@@ -1,17 +1,20 @@
 import { render, screen } from '@testing-library/react'
 import { AuthOverlay } from './AuthOverlay'
 
+const mockStore = {
+  login: vi.fn(),
+  register: vi.fn(),
+  checkSetupStatus: vi.fn(),
+  checkAuth: vi.fn(),
+  needsSetup: false,
+  authLoading: false,
+  token: null,
+  user: null,
+}
+
 vi.mock('@/hooks/useJarvisStore', () => ({
-  useJarvisStore: () => ({
-    login: vi.fn(),
-    register: vi.fn(),
-    checkSetupStatus: vi.fn(),
-    checkAuth: vi.fn(),
-    needsSetup: false,
-    authLoading: false,
-    token: null,
-    user: null,
-  })
+  useJarvisStore: (selector?: (state: typeof mockStore) => unknown) =>
+    selector ? selector(mockStore) : mockStore,
 }))
 
 describe('AuthOverlay Component', () => {

@@ -90,7 +90,7 @@ export function ChatWindow() {
       fetchConversations();
       fetchChatHistory();
     }
-  }, [token]);
+  }, [token, fetchConversations, fetchChatHistory]);
 
   useEffect(() => {
     return () => {
@@ -139,7 +139,7 @@ export function ChatWindow() {
           {isListeningForWakeWord && (
             <div className="hidden md:flex items-center gap-2 mr-2 bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
               <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
-              <span className="text-xs text-primary font-medium">Listening for "JARVIS"</span>
+              <span className="text-xs text-primary font-medium">Listening for &quot;JARVIS&quot;</span>
             </div>
           )}
           <Button 
@@ -279,7 +279,7 @@ export function ChatWindow() {
           </form>
           
           <div className="flex justify-between items-center mt-2 px-1">
-            <span className="text-[10px] text-muted-foreground">JARVIS OS v2.0 • AI can make mistakes. Consider verifying important information.</span>
+            <span className="text-[10px] text-muted-foreground">JARVIS OS v2.0 &bull; AI can make mistakes. Consider verifying important information.</span>
             
             {/* Token Counter Widget */}
             <div className="flex items-center space-x-3 text-[10px] font-mono text-cyan-500/60 uppercase tracking-widest bg-cyan-500/5 px-3 py-1 rounded-full border border-cyan-500/20">

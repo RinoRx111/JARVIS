@@ -79,6 +79,8 @@ export default function BrowserTab() {
             <div className="space-y-4">
               {/* Screenshot visual container */}
               <div className="border border-cyan-500/30 rounded bg-slate-900/80 overflow-hidden relative group">
+                {/* Backend-generated Playwright screenshots should render directly. */}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={`http://localhost:8000${store.browserScreenshotUrl}`}
                   alt="Browser Virtual Viewport"

@@ -9,14 +9,15 @@ import { Card, CardContent } from '@/components/ui/card';
 
 export default function MemoryPage() {
   const store = useJarvisStore();
+  const fetchMemories = useJarvisStore((state) => state.fetchMemories);
   const [query, setQuery] = useState('');
   const [newFact, setNewFact] = useState('');
   const [loading, setLoading] = useState(true);
   const [adding, setAdding] = useState(false);
 
   useEffect(() => {
-    store.fetchMemories().finally(() => setLoading(false));
-  }, []);
+    fetchMemories().finally(() => setLoading(false));
+  }, [fetchMemories]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();

@@ -10,6 +10,8 @@ import { API_URL } from '@/services/api';
 
 export function AuthOverlay() {
   const store = useJarvisStore();
+  const checkSetupStatus = useJarvisStore((state) => state.checkSetupStatus);
+  const checkAuth = useJarvisStore((state) => state.checkAuth);
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,9 +20,9 @@ export function AuthOverlay() {
 
   // Check setup status on mount
   useEffect(() => {
-    store.checkSetupStatus();
-    store.checkAuth();
-  }, []);
+    checkSetupStatus();
+    checkAuth();
+  }, [checkSetupStatus, checkAuth]);
 
   // Force register mode if setup is needed
   useEffect(() => {

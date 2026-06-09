@@ -8,10 +8,11 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 
 export default function AnalyticsPage() {
   const store = useJarvisStore();
+  const fetchAnalytics = useJarvisStore((state) => state.fetchAnalytics);
 
   useEffect(() => {
-    store.fetchAnalytics();
-  }, []);
+    fetchAnalytics();
+  }, [fetchAnalytics]);
 
   const data = store.analyticsData || { tokens: null, tools: null };
   const tokens = data.tokens;

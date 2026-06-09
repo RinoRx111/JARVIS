@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr
 
 from app.models.user import Role
 
@@ -14,6 +14,8 @@ class UserLogin(UserBase):
     password: str
 
 class UserResponse(UserBase):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     is_active: bool
     role: Role
@@ -44,9 +46,6 @@ class UserResponse(UserBase):
     has_trello_token: bool = False
     has_google_token: bool = False
 
-    class Config:
-        from_attributes = True
-
 class UserPreferencesUpdate(BaseModel):
     full_name: Optional[str] = None
     nickname: Optional[str] = None
@@ -73,4 +72,3 @@ class OAuthLoginRequest(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
-

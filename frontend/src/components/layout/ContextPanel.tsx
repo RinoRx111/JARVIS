@@ -13,12 +13,13 @@ export function ContextPanel() {
   const [isOpen, setIsOpen] = useState(true);
   const pathname = usePathname();
   const store = useJarvisStore();
+  const fetchConversations = useJarvisStore((state) => state.fetchConversations);
 
   useEffect(() => {
     if (pathname === '/') {
-      store.fetchConversations();
+      fetchConversations();
     }
-  }, [pathname]);
+  }, [pathname, fetchConversations]);
 
   const isChatTab = pathname === '/';
 
