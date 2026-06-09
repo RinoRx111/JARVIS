@@ -27,9 +27,18 @@ function createWindow() {
   mainWindow.maximize();
 
   if (isDev) {
-    mainWindow.loadURL('http://localhost:3000');
+    const loadDevServer = () => {
+      if (!mainWindow) return;
+      mainWindow.loadURL('http://localhost:3000').catch((err) => {
+        console.log('Next.js dev server not ready yet, retrying in 1s...');
+        setTimeout(loadDevServer, 1000);
+      });
+    };
+    loadDevServer();
   } else {
-    mainWindow.loadFile(path.join(process.resourcesPath, 'frontend', 'out', 'index.html'));
+    mainWindow.loadFile(path.join(process.resourcesPath, 'frontend', 'out', 'index.html')).catch((err) => {
+      console.error('Failed to load production frontend index.html:', err);
+    });
   }
 
   mainWindow.once('ready-to-show', () => {
