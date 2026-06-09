@@ -8,16 +8,6 @@ try:
 except ImportError:
     ChatGroq = None
 
-try:
-    from langchain_community.chat_models.ollama import ChatOllama
-except ImportError:
-    try:
-        from langchain_community.chat_models import ChatOllama
-    except ImportError:
-        class ChatOllama:
-            def __init__(self, *args, **kwargs):
-                pass
-
 from app.core.config import settings
 from app.models.user import User
 from app.core.crypto import decrypt_key
@@ -125,10 +115,14 @@ def get_ollama_client(user: Optional[User] = None, temperature: float = 0.7) -> 
     cache_key = f"ollama_{user_id}_{model_name}_{temperature}"
     
     if cache_key not in _model_cache:
-        _model_cache[cache_key] = ChatOllama(
-            base_url=settings.OLLAMA_API_URL,
+        # Use ChatOpenAI pointing to Ollama's OpenAI-compatible endpoint.
+        # This ensures the model object implements bind_tools for LangGraph.
+        base_url = settings.OLLAMA_API_URL.rstrip('/') + '/v1'
+        _model_cache[cache_key] = ChatOpenAI(
             model=model_name,
-            temperature=temperature
+            temperature=temperature,
+            openai_api_key="ollama",
+            openai_api_base=base_url
         )
     return _model_cache[cache_key]
 
