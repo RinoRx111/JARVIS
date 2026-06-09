@@ -30,13 +30,13 @@ export function MessageBubble({ message }: { message: MessageProps }) {
         className={cn(
           "flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-md border shadow-sm",
           isUser
-            ? "bg-primary text-primary-foreground border-primary shadow-[0_0_10px_rgba(0,216,255,0.3)]"
+            ? "bg-primary text-primary-foreground border-primary shadow-[0_0_10px_rgba(0,194,255,0.3)]"
             : isSystem
-              ? "bg-red-500/10 border-red-500/20 text-red-400"
-              : "bg-white/5 border-white/10 text-white backdrop-blur-sm"
+              ? "bg-[#FF4D4D]/10 border-[#FF4D4D]/20 text-[#FF4D4D]"
+              : "bg-[#0E1318] border-[#1E2A35] text-[#E8EDF2] backdrop-blur-sm"
         )}
       >
-        {isUser ? <User size={16} /> : isSystem ? <Bot size={16} className="text-red-400" /> : <Bot size={16} />}
+        {isUser ? <User size={16} /> : isSystem ? <Bot size={16} className="text-[#FF4D4D]" /> : <Bot size={16} className="text-[#00C2FF]" />}
       </div>
       
       <div
@@ -49,13 +49,12 @@ export function MessageBubble({ message }: { message: MessageProps }) {
           className={cn(
             "rounded-2xl px-5 py-3 text-sm leading-relaxed glass-card",
             isUser
-              ? "bg-primary/10 text-white rounded-tr-sm border-primary/20"
+              ? "bg-primary/10 text-[#E8EDF2] rounded-tr-sm border-primary/20"
               : isSystem 
-                ? "bg-red-500/10 text-red-200 rounded-tl-sm border-red-500/20"
-                : "bg-white/5 text-gray-200 rounded-tl-sm border-white/10"
+                ? "bg-[#FF4D4D]/10 text-[#E8EDF2] rounded-tl-sm border-[#FF4D4D]/20"
+                : "bg-white/[0.03] text-[#E8EDF2] rounded-tl-sm border-[#1E2A35]"
           )}
         >
-          {/* Simple plain text rendering for now - Markdown parser can be added */}
           <div className="whitespace-pre-wrap">{message.content}</div>
           
           {message.isStreaming && (
@@ -64,7 +63,7 @@ export function MessageBubble({ message }: { message: MessageProps }) {
         </div>
         
         {message.timestamp && (
-          <span className="text-[10px] text-muted-foreground px-1">
+          <span className="text-xs text-muted-foreground px-1">
             {message.timestamp}
           </span>
         )}

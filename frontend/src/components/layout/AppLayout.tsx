@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { Sidebar } from './Sidebar';
 import { ContextPanel } from './ContextPanel';
+import { ToastContainer } from './ToastContainer';
 import { AuthOverlay } from '../auth/AuthOverlay';
 import { wsService } from '@/services/websocket';
 import { useJarvisStore } from '@/hooks/useJarvisStore';
@@ -25,6 +26,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <>
       <AuthOverlay />
+      <ToastContainer />
       <div className="flex h-screen w-full bg-background overflow-hidden selection:bg-primary/30 relative">
         <Sidebar />
         <main className="flex-1 h-full overflow-hidden flex flex-col relative z-10">

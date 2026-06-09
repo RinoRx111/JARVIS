@@ -8,20 +8,15 @@ import {
   CheckSquare, 
   Bot, 
   FolderSearch, 
-  Mail, 
-  CalendarDays, 
   Zap, 
   Settings,
   Menu,
   ChevronLeft,
-  LogOut,
-  UserCircle,
   Activity
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useJarvisStore } from '@/hooks/useJarvisStore';
 
 const navItems = [
   { name: 'AI Chat', icon: MessageSquare, href: '/' },
@@ -36,28 +31,27 @@ const navItems = [
 export function Sidebar() {
   const [isExpanded, setIsExpanded] = useState(true);
   const pathname = usePathname();
-  const store = useJarvisStore();
 
   return (
     <motion.aside
       initial={false}
-      animate={{ width: isExpanded ? 240 : 72 }}
-      className="h-screen relative flex flex-col border-r border-white/5 bg-black/40 backdrop-blur-xl z-50 overflow-hidden"
+      animate={{ width: isExpanded ? 220 : 64 }}
+      className="h-screen relative flex flex-col border-r border-[#1E2A35] bg-[#0E1318] z-50 overflow-hidden"
     >
-      <div className="flex h-16 items-center justify-between px-4 border-b border-white/5">
+      <div className="flex h-16 items-center justify-between px-4 border-b border-[#1E2A35]">
         <motion.div 
           animate={{ opacity: isExpanded ? 1 : 0 }}
           className={cn("flex items-center gap-2", !isExpanded && "hidden")}
         >
-          <div className="h-6 w-6 rounded-md bg-gradient-to-tr from-cyan-500 to-blue-500 shadow-[0_0_15px_rgba(0,216,255,0.4)]" />
-          <span className="font-orbitron font-bold tracking-widest text-transparent bg-clip-text bg-gradient-to-r from-white to-white/70">
+          <div className="h-6 w-6 rounded-md bg-gradient-to-tr from-[#00C2FF] to-[#7B61FF] shadow-[0_0_15px_rgba(0,194,255,0.3)]" />
+          <span className="font-mono-style font-bold tracking-widest text-[#E8EDF2] text-xs uppercase">
             JARVIS
           </span>
         </motion.div>
         
         <button 
           onClick={() => setIsExpanded(!isExpanded)}
-          className="p-1.5 rounded-md hover:bg-white/10 transition-colors text-muted-foreground hover:text-white"
+          className="p-1.5 rounded-md hover:bg-white/[0.03] transition-colors text-muted-foreground hover:text-[#E8EDF2]"
         >
           {isExpanded ? <ChevronLeft size={20} /> : <Menu size={20} />}
         </button>
@@ -70,19 +64,19 @@ export function Sidebar() {
             <Link key={item.name} href={item.href}>
               <div
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 group relative",
+                  "flex items-center gap-3 px-3 py-2.5 transition-all duration-200 group relative rounded-lg",
                   isActive 
-                    ? "bg-primary/10 text-primary shadow-[inset_0_0_20px_rgba(0,216,255,0.05)]" 
-                    : "text-muted-foreground hover:bg-white/5 hover:text-white"
+                    ? "text-primary bg-transparent" 
+                    : "text-muted-foreground hover:bg-white/[0.03] hover:text-[#E8EDF2]"
                 )}
               >
                 {isActive && (
                   <motion.div
                     layoutId="activeTab"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary rounded-r-full shadow-[0_0_10px_rgba(0,216,255,0.6)]"
+                    className="absolute left-0 top-0 h-full w-[2px] bg-[#00C2FF] shadow-[0_0_8px_rgba(0,194,255,0.5)]"
                   />
                 )}
-                <item.icon size={20} className={cn("min-w-[20px]", isActive ? "text-primary" : "group-hover:text-white")} />
+                <item.icon size={20} className={cn("min-w-[20px]", isActive ? "text-[#00C2FF]" : "group-hover:text-[#E8EDF2]")} />
                 
                 <motion.span 
                   animate={{ opacity: isExpanded ? 1 : 0, x: isExpanded ? 0 : -10 }}
@@ -96,9 +90,20 @@ export function Sidebar() {
         })}
       </nav>
 
-      <div className="p-3 border-t border-white/5">
+      <div className="p-3 border-t border-[#1E2A35]">
         <Link href="/settings">
-          <div className="flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200 text-muted-foreground hover:bg-white/5 hover:text-white">
+          <div className={cn(
+            "flex items-center gap-3 px-3 py-2.5 transition-all duration-200 group relative rounded-lg",
+            pathname === '/settings'
+              ? "text-primary bg-transparent"
+              : "text-muted-foreground hover:bg-white/[0.03] hover:text-[#E8EDF2]"
+          )}>
+            {pathname === '/settings' && (
+              <motion.div
+                layoutId="activeTab"
+                className="absolute left-0 top-0 h-full w-[2px] bg-[#00C2FF] shadow-[0_0_8px_rgba(0,194,255,0.5)]"
+              />
+            )}
             <Settings size={20} className="min-w-[20px]" />
             <motion.span 
               animate={{ opacity: isExpanded ? 1 : 0 }}

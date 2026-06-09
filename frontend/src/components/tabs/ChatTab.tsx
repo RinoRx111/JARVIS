@@ -172,7 +172,7 @@ export default function ChatTab() {
       {/* Dynamic HUD Voice Reactor Core */}
       <HolographicPanel title="Core Consciousness Visualizer" tag="ARC_REACTOR_CORE">
         <div className="flex flex-col items-center justify-center min-h-[400px] h-full">
-          <VoiceOrb status={store.coreStatus} isWebSocket={store.wsConnected} />
+          <VoiceOrb status={store.coreStatus} />
         </div>
       </HolographicPanel>
     </div>

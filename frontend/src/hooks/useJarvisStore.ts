@@ -93,6 +93,9 @@ interface JarvisState {
   setCoreStatus: (status: 'STANDBY' | 'THINKING' | 'LISTENING' | 'SPEAKING') => void;
   notifications: string[];
   addNotification: (msg: string) => void;
+  activeToasts: { id: string; message: string }[];
+  addToast: (msg: string) => void;
+  removeToast: (id: string) => void;
   updateSystemStats: () => void;
 
   // Chat/Voice State
@@ -326,6 +329,20 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
   addNotification: (msg) => {
     const list = [...get().notifications, `[${new Date().toLocaleTimeString()}] ${msg}`];
     set({ notifications: list.slice(-15) }); // Keep last 15 logs
+    get().addToast(msg);
+  },
+  activeToasts: [],
+  addToast: (message) => {
+    const id = Math.random().toString(36).substring(2, 9);
+    const currentToasts = get().activeToasts;
+    const nextToasts = [...currentToasts, { id, message }].slice(-3);
+    set({ activeToasts: nextToasts });
+    setTimeout(() => {
+      get().removeToast(id);
+    }, 4000);
+  },
+  removeToast: (id) => {
+    set({ activeToasts: get().activeToasts.filter((t) => t.id !== id) });
   },
   updateSystemStats: () => {
     // Holographic stat fluctuation

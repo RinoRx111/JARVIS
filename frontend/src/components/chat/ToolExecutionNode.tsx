@@ -22,11 +22,11 @@ export function ToolExecutionNode({ tool, index }: { tool: ToolExecutionProps; i
       animate={{ opacity: 1, scale: 1 }}
       className="my-2 ml-12 mr-auto max-w-[70%]"
     >
-      <div className="rounded-lg border border-white/10 bg-black/40 overflow-hidden shadow-sm backdrop-blur-md">
+      <div className="rounded-lg border border-[#1E2A35] bg-[#0E1318] overflow-hidden shadow-sm backdrop-blur-sm">
         <button
           onClick={() => setExpanded(!expanded)}
           className={cn(
-            "flex w-full items-center justify-between px-3 py-2 text-xs transition-colors hover:bg-white/5",
+            "flex w-full items-center justify-between px-3 py-2 text-xs transition-colors hover:bg-white/[0.03]",
             tool.status === "running" ? "bg-primary/5" : "bg-transparent"
           )}
         >
@@ -34,9 +34,9 @@ export function ToolExecutionNode({ tool, index }: { tool: ToolExecutionProps; i
             {tool.status === "running" ? (
               <CircleDashed size={14} className="animate-spin text-primary" />
             ) : tool.status === "success" ? (
-              <CheckCircle2 size={14} className="text-emerald-500" />
+              <CheckCircle2 size={14} className="text-[#00E5A0]" />
             ) : (
-              <Terminal size={14} className="text-destructive" />
+              <Terminal size={14} className="text-[#FF4D4D]" />
             )}
             
             <span className="font-mono text-muted-foreground uppercase tracking-wider">
@@ -44,13 +44,13 @@ export function ToolExecutionNode({ tool, index }: { tool: ToolExecutionProps; i
             </span>
             
             {tool.durationMs && (
-              <span className="text-[10px] text-muted-foreground/50 ml-2">
+              <span className="text-xs text-muted-foreground/50 ml-2 font-mono">
                 {tool.durationMs}ms
               </span>
             )}
           </div>
           
-          <div className="text-muted-foreground hover:text-white transition-colors">
+          <div className="text-muted-foreground hover:text-[#00C2FF] transition-colors">
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </div>
         </button>
@@ -61,15 +61,15 @@ export function ToolExecutionNode({ tool, index }: { tool: ToolExecutionProps; i
               initial={{ height: 0 }}
               animate={{ height: "auto" }}
               exit={{ height: 0 }}
-              className="overflow-hidden border-t border-white/5"
+              className="overflow-hidden border-t border-[#1E2A35]"
             >
-              <div className="p-3 bg-black/60 font-mono text-[11px] text-muted-foreground whitespace-pre-wrap max-h-[300px] overflow-y-auto">
+              <div className="p-3 bg-[#141B22]/50 font-mono text-xs text-muted-foreground whitespace-pre-wrap max-h-[300px] overflow-y-auto">
                 <div className="mb-2">
                   <span className="text-primary/70 select-none">{'>'} INPUT: </span>
                   {tool.input || "{}"}
                 </div>
                 <div>
-                  <span className="text-emerald-500/70 select-none">{'>'} OUTPUT: </span>
+                  <span className="text-[#00E5A0]/70 select-none">{'>'} OUTPUT: </span>
                   {tool.output || "..."}
                 </div>
               </div>

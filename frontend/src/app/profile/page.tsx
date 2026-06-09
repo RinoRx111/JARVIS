@@ -1,22 +1,22 @@
 import React from 'react';
 import ProfileTab from '@/components/tabs/ProfileTab';
+import { UserCircle } from 'lucide-react';
 
 export default function ProfilePage() {
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden">
-      <header className="h-16 flex items-center px-6 border-b border-white/5 bg-black/20 backdrop-blur-md shrink-0">
-        <h1 className="text-lg font-medium text-white">Operator Profile</h1>
-      </header>
-      
-      <div className="flex-1 overflow-y-auto p-6 md:p-8 lg:p-12 custom-scrollbar">
-        <div className="max-w-5xl mx-auto w-full">
-          <div className="mb-8">
-            <h2 className="text-2xl font-bold text-white tracking-wide">Identity & Telemetry</h2>
-            <p className="text-sm text-muted-foreground mt-1">Manage your operator identity and view active grid APIs.</p>
-          </div>
-          
-          <ProfileTab />
+    <div className="p-6 md:p-12 w-full h-full flex flex-col gap-6 overflow-y-auto bg-background">
+      <div className="flex items-center gap-4 border-b border-[#1E2A35]/30 pb-6 shrink-0">
+        <div className="p-3 bg-primary/10 rounded-xl text-primary shrink-0">
+          <UserCircle size={24} />
         </div>
+        <div>
+          <h1 className="text-lg font-mono uppercase tracking-widest text-[#E8EDF2] font-bold">Identity & Telemetry</h1>
+          <p className="text-xs text-[#6B7F8E]">Manage your operator identity and view active grid APIs</p>
+        </div>
+      </div>
+      
+      <div className="flex-1 mt-4">
+        <ProfileTab />
       </div>
     </div>
   );

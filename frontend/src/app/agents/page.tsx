@@ -1,8 +1,8 @@
 "use client";
 import React, { useEffect } from "react";
-import { AgentCard } from "@/components/agents/AgentCard";
-import { ActivityTimeline, TimelineEvent } from "@/components/agents/ActivityTimeline";
+import { ActivityTimeline } from "@/components/agents/ActivityTimeline";
 import { useJarvisStore } from "@/hooks/useJarvisStore";
+import { Bot } from "lucide-react";
 
 export default function AgentsPage() {
   const store = useJarvisStore();
@@ -31,35 +31,39 @@ export default function AgentsPage() {
     { id: "linkedin_agent_enabled", name: "LinkedIn Agent", desc: "Analyze profiles and craft messages", icon: "💼" },
     { id: "automation_agent_enabled", name: "Automation Agent", desc: "Desktop macros and scheduled scripts", icon: "⚙️" },
   ];
+
   return (
-    <div className="flex flex-col h-full w-full overflow-hidden">
-      <header className="h-16 flex items-center px-6 border-b border-white/5 bg-black/20 backdrop-blur-md">
-        <div>
-          <h1 className="text-lg font-medium text-white">Agent Command Center</h1>
-          <p className="text-xs text-muted-foreground">Monitor and control autonomous subagents</p>
+    <div className="p-6 md:p-12 w-full h-full flex flex-col gap-6 overflow-y-auto bg-background">
+      <div className="flex items-center gap-4 border-b border-[#1E2A35]/30 pb-6 shrink-0">
+        <div className="p-3 bg-primary/10 rounded-xl text-primary shrink-0">
+          <Bot size={24} />
         </div>
-      </header>
+        <div>
+          <h1 className="text-lg font-mono uppercase tracking-widest text-[#E8EDF2] font-bold">Agent Command Center</h1>
+          <p className="text-xs text-[#6B7F8E]">Monitor and control autonomous subagents</p>
+        </div>
+      </div>
       
-      <div className="flex-1 overflow-y-auto p-6 md:p-8">
-        <div className="max-w-7xl mx-auto grid grid-cols-1 xl:grid-cols-3 gap-8">
+      <div className="flex-1 mt-4">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           
           <div className="xl:col-span-2 space-y-6">
-            <h2 className="text-sm font-semibold tracking-widest text-primary uppercase">Agent Marketplace</h2>
+            <h2 className="text-xs font-mono font-bold tracking-widest text-[#00C2FF] uppercase">Agent Marketplace</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {agentsList.map((agent) => (
-                <div key={agent.id} className="glass-card p-4 rounded-xl flex items-center justify-between border border-white/5 transition hover:border-white/10">
+                <div key={agent.id} className="glass-card p-4 rounded-xl flex items-center justify-between border border-[#1E2A35] transition hover:shadow-[0_0_12px_rgba(0,194,255,0.15)] bg-[#0E1318]/50">
                   <div className="flex items-center gap-3">
-                    <div className="text-2xl">{agent.icon}</div>
+                    <div className="text-lg">{agent.icon}</div>
                     <div>
-                      <h3 className="text-sm font-medium text-white">{agent.name}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5 max-w-[200px] leading-relaxed">{agent.desc}</p>
+                      <h3 className="text-sm font-medium text-[#E8EDF2]">{agent.name}</h3>
+                      <p className="text-xs text-[#6B7F8E] mt-0.5 max-w-[200px] leading-relaxed">{agent.desc}</p>
                     </div>
                   </div>
                   <button 
                     onClick={() => toggleAgent(agent.id, config[agent.id])}
-                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-black ${config[agent.id] ? 'bg-primary' : 'bg-white/20'}`}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 focus:ring-offset-[#080B0F] ${config[agent.id] ? 'bg-primary' : 'bg-[#1E2A35]'}`}
                   >
-                    <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${config[agent.id] ? 'translate-x-6' : 'translate-x-1'}`} />
+                    <span className={`inline-block h-4 w-4 transform rounded-full bg-[#080B0F] transition-transform ${config[agent.id] ? 'translate-x-6' : 'translate-x-1'}`} />
                   </button>
                 </div>
               ))}
@@ -67,8 +71,8 @@ export default function AgentsPage() {
           </div>
           
           <div className="space-y-6">
-            <h2 className="text-sm font-semibold tracking-widest text-primary uppercase">Global Activity Feed</h2>
-            <div className="glass-card p-6 rounded-xl">
+            <h2 className="text-xs font-mono font-bold tracking-widest text-[#00C2FF] uppercase">Global Activity Feed</h2>
+            <div className="glass-card p-6 rounded-xl border border-[#1E2A35] bg-[#0E1318]/50">
               <ActivityTimeline events={[
                 { id: "1", title: "Thinking", description: "Analyzing request intent and required context", status: "completed", type: "thinking", time: "10:41 AM" },
                 { id: "2", title: "Web Search", description: "Query: 'Next.js 14 App Router best practices'", status: "completed", type: "search", time: "10:42 AM" },
