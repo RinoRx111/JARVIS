@@ -20,7 +20,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      webSecurity: false // allow file:// to access other file:// resources for Next.js static export
+      webSecurity: true
     }
   });
 

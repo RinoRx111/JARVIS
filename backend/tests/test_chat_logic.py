@@ -42,12 +42,21 @@ def test_chat_websocket_authentication(client, session):
     # Valid token
     token = create_access_token(subject=str(user.id))
     
-    # Connect with valid token should accept (we mock the timeout/disconnect to cleanly exit)
-    with client.websocket_connect(f"/api/v1/chat/ws?token={token}") as websocket:
-        # Just asserting it connects without 1008 violation is enough for auth test
-        pass
+    # Connect and send valid token
+    with client.websocket_connect("/api/v1/chat/ws") as websocket:
+        websocket.send_json({"token": token})
         
-    # Connect with invalid token should be rejected with 1008
+    # Connect with invalid token should be rejected (close socket)
     with pytest.raises(Exception):
-        with client.websocket_connect("/api/v1/chat/ws?token=invalid_token") as websocket:
-            pass # Should raise WebSocketDisconnect
+        with client.websocket_connect("/api/v1/chat/ws") as websocket:
+            websocket.send_json({"token": "invalid_token"})
+            websocket.receive_json()
+            websocket.receive_json()
+
+    # Connect with missing token payload should be rejected (close socket)
+    with pytest.raises(Exception):
+        with client.websocket_connect("/api/v1/chat/ws") as websocket:
+            websocket.send_json({"not_a_token": "some_value"})
+            websocket.receive_json()
+            websocket.receive_json()
+

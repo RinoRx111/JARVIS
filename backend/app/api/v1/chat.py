@@ -236,30 +236,46 @@ async def send_chat_message(
 from app.services.websocket_manager import manager
 
 @router.websocket("/ws")
-async def websocket_chat_endpoint(websocket: WebSocket, token: str, db: Session = Depends(get_db)):
+async def websocket_chat_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
     """Establish real-time communication for bidirectional AI streams."""
+    await websocket.accept()
     
-    # Secure JWT token decoding for WebSocket auth
-    payload = decode_token(token)
-    if not payload or payload.get("type") != "access":
-        await websocket.send_json({"error": "Authentication failed", "type": "error"})
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        return
-        
-    user_id = payload.get("sub")
-    if not user_id:
-        await websocket.send_json({"error": "Authentication failed", "type": "error"})
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
-        return
-        
-    user = db.exec(select(User).where(User.id == int(user_id))).first()
-    if not user:
-        await websocket.accept()
-        await websocket.send_json({"error": "Authentication failed", "type": "error"})
-        await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+    try:
+        # Wait for the first message which must contain the auth token
+        auth_data = await websocket.receive_json()
+        if not isinstance(auth_data, dict) or "token" not in auth_data:
+            await websocket.send_json({"error": "Missing authentication token", "type": "error"})
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+            
+        token = auth_data["token"]
+        payload = decode_token(token)
+        if not payload or payload.get("type") != "access":
+            await websocket.send_json({"error": "Authentication failed", "type": "error"})
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+            
+        user_id = payload.get("sub")
+        if not user_id:
+            await websocket.send_json({"error": "Authentication failed", "type": "error"})
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+            
+        user = db.exec(select(User).where(User.id == int(user_id))).first()
+        if not user:
+            await websocket.send_json({"error": "Authentication failed", "type": "error"})
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+            return
+            
+    except Exception as e:
+        logger.error(f"WebSocket handshake/auth error: {e}")
+        try:
+            await websocket.close(code=status.WS_1008_POLICY_VIOLATION)
+        except Exception:
+            pass
         return
 
-    await manager.connect(user.id, websocket)
+    await manager.connect(user.id, websocket, accept_first=False)
 
     import asyncio
     current_task = None

@@ -4,7 +4,7 @@ import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useJarvisStore } from '@/hooks/useJarvisStore';
 import { Loader2 } from 'lucide-react';
-import { API_URL } from '@/services/api';
+import api from '@/services/api';
 
 function AuthCallbackInner() {
   const router = useRouter();
@@ -22,26 +22,16 @@ function AuthCallbackInner() {
 
     const processOAuth = async () => {
       try {
-        const res = await fetch(`${API_URL}/api/v1/auth/google/callback`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code })
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          // Store access and refresh tokens in Zustand and LocalStorage
-          store.setToken(data.access_token, data.refresh_token);
-          // Fetch user details immediately to verify login
-          await store.checkAuth();
-          // Redirect to the main chat interface
-          router.push('/');
-        } else {
-          const errData = await res.json();
-          setError(errData.detail || "Google authentication failed.");
-        }
-      } catch (err) {
-        setError("Network error communicating with JARVIS Core.");
+        const res = await api.post('/auth/google/callback', { code });
+        const data = res.data;
+        // Store access and refresh tokens in Zustand and LocalStorage
+        store.setToken(data.access_token, data.refresh_token);
+        // Fetch user details immediately to verify login
+        await store.checkAuth();
+        // Redirect to the main chat interface
+        router.push('/');
+      } catch (err: any) {
+        setError(err.response?.data?.detail || "Google authentication failed or communication error occurred.");
       }
     };
 

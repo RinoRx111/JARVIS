@@ -24,11 +24,14 @@ class WebSocketService {
     const wsHost = apiBase.replace(/^https?:\/\//, '');
     const token = useJarvisStore.getState().token;
     if (!token) return; // Don't connect if not authenticated
-    const wsUrl = `${wsProtocol}//${wsHost}/api/v1/chat/ws?token=${token}`;
+    const wsUrl = `${wsProtocol}//${wsHost}/api/v1/chat/ws`;
     
     this.socket = new WebSocket(wsUrl);
 
     this.socket.onopen = () => {
+      if (this.socket) {
+        this.socket.send(JSON.stringify({ token }));
+      }
       this.reconnectAttempts = 0;
       useJarvisStore.setState({ wsConnected: true });
       useJarvisStore.getState().addNotification("Voice stream uplink connected via WebSocket.");

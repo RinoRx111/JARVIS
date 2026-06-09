@@ -43,7 +43,7 @@ python -m pip install -r requirements.txt >nul 2>&1
 echo Installing browser dependencies for Virtual Browser...
 python -m playwright install chromium
 REM Launch uvicorn backend server in a separate persistent window
-start "JARVIS Backend Server" cmd /k "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+start "JARVIS Backend Server" cmd /k "python -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
 cd ..
 
 REM 5. Install & Run Frontend
