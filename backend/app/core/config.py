@@ -47,7 +47,7 @@ class Settings(BaseSettings):
     # --- GOOGLE OAUTH2 ---
     GOOGLE_CLIENT_ID: Optional[str] = None
     GOOGLE_CLIENT_SECRET: Optional[str] = None
-    GOOGLE_REDIRECT_URI: str = "http://localhost:8000/api/v1/auth/google/callback"
+    GOOGLE_REDIRECT_URI: str = "http://localhost:3000/auth/callback"
 
     # --- INTEGRATION TOKENS ---
     GITHUB_TOKEN: Optional[str] = None
@@ -72,11 +72,14 @@ class Settings(BaseSettings):
                 setattr(self, field, None)
         
         # Load API key from file if GROQ_API_KEY_FILE is provided
-        if self.GROQ_API_KEY_FILE and os.path.exists(self.GROQ_API_KEY_FILE):
-            with open(self.GROQ_API_KEY_FILE, "r") as f:
-                key = f.read().strip()
-                if key and not key.startswith("PASTE_YOUR"):
-                    self.GROQ_API_KEY = key
+        if self.GROQ_API_KEY_FILE:
+            project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(__file__))))
+            resolved_path = os.path.abspath(os.path.join(project_root, self.GROQ_API_KEY_FILE))
+            if os.path.exists(resolved_path):
+                with open(resolved_path, "r") as f:
+                    key = f.read().strip()
+                    if key and not key.startswith("PASTE_YOUR"):
+                        self.GROQ_API_KEY = key
         # Ensure WORKSPACE_DIR is absolute so subprocess paths resolve correctly
         if self.WORKSPACE_DIR:
             self.WORKSPACE_DIR = os.path.abspath(self.WORKSPACE_DIR)

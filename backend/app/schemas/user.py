@@ -42,6 +42,7 @@ class UserResponse(UserBase):
     has_discord_token: bool = False
     has_jira_token: bool = False
     has_trello_token: bool = False
+    has_google_token: bool = False
 
     class Config:
         from_attributes = True
@@ -69,3 +70,7 @@ class TokenPayload(BaseModel):
 
 class OAuthLoginRequest(BaseModel):
     code: str
+
+class RefreshRequest(BaseModel):
+    refresh_token: str
+

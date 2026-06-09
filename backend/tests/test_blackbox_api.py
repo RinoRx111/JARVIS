@@ -1,8 +1,20 @@
+import socket
 import pytest
 import httpx
-import os
 
 BASE_URL = "http://localhost:8000/api/v1"
+
+def is_server_running() -> bool:
+    try:
+        with socket.create_connection(("localhost", 8000), timeout=0.5):
+            return True
+    except OSError:
+        return False
+
+pytestmark = pytest.mark.skipif(
+    not is_server_running(),
+    reason="Backend server must be running at http://localhost:8000 to run blackbox API tests"
+)
 
 @pytest.mark.asyncio
 async def test_blackbox_setup_status():

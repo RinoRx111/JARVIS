@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.core.security import verify_password, get_password_hash, create_access_token, create_refresh_token, decode_token
 from app.models.user import User, Role
-from app.schemas.user import UserCreate, UserLogin, UserResponse, Token, OAuthLoginRequest
+from app.schemas.user import UserCreate, UserLogin, UserResponse, Token, OAuthLoginRequest, RefreshRequest
 from app.core.crypto import encrypt_key
 
 logger = logging.getLogger(__name__)
@@ -107,9 +107,9 @@ def login(user_in: UserLogin, db: Session = Depends(get_db)):
     }
 
 @router.post("/refresh", response_model=Token)
-def refresh_token(refresh_token: str, db: Session = Depends(get_db)):
+def refresh_token(body: RefreshRequest, db: Session = Depends(get_db)):
     """Validates refresh token and yields new access token."""
-    payload = decode_token(refresh_token)
+    payload = decode_token(body.refresh_token)
     if not payload or payload.get("type") != "refresh":
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -295,7 +295,8 @@ def get_me(current_user: User = Depends(get_current_user)):
         has_slack_token=bool(current_user.slack_token),
         has_discord_token=bool(current_user.discord_token),
         has_jira_token=bool(current_user.jira_token),
-        has_trello_token=bool(current_user.trello_token)
+        has_trello_token=bool(current_user.trello_token),
+        has_google_token=bool(current_user.google_refresh_token)
     )
 
 @router.get("/models/local")
@@ -403,5 +404,6 @@ async def update_preferences(
         has_slack_token=bool(current_user.slack_token),
         has_discord_token=bool(current_user.discord_token),
         has_jira_token=bool(current_user.jira_token),
-        has_trello_token=bool(current_user.trello_token)
+        has_trello_token=bool(current_user.trello_token),
+        has_google_token=bool(current_user.google_refresh_token)
     )

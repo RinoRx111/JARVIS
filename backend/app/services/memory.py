@@ -26,6 +26,8 @@ class MemoryService:
 
     def _initialize_chroma(self):
         try:
+            if not settings.CHROMA_HOST:
+                raise ValueError("CHROMA_HOST is not configured.")
             # Attempt HTTP client connection (configured for docker orchestration)
             logger.info(f"Connecting to ChromaDB at {settings.CHROMA_HOST}:{settings.CHROMA_PORT}...")
             self.client = chromadb.HttpClient(
@@ -45,6 +47,7 @@ class MemoryService:
                 path=persist_dir,
                 settings=ChromaSettings(anonymized_telemetry=False)
             )
+            logger.info("ChromaDB running in local PersistentClient mode at: " + persist_dir)
 
         try:
             # Initialize collections

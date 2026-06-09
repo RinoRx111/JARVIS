@@ -70,6 +70,7 @@ services:
       - POSTGRES_HOST=postgres
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
+      - DATABASE_URL=postgresql+psycopg2://postgres:secure_postgres_password_here@postgres:5432/jarvis_db
     depends_on:
       postgres:
         condition: service_healthy
@@ -115,6 +116,7 @@ services:
       - POSTGRES_HOST=postgres
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
+      - DATABASE_URL=postgresql+psycopg2://postgres:secure_postgres_password_here@postgres:5432/jarvis_db
     depends_on:
       postgres:
         condition: service_healthy

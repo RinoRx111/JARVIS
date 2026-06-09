@@ -2,9 +2,10 @@
 
 import React, { useEffect, useState } from 'react';
 import { useJarvisStore } from '@/hooks/useJarvisStore';
-import { Settings, Cpu, HardDrive, Volume2, Shield, Key } from 'lucide-react';
+import { Settings, Cpu, HardDrive, Volume2, Shield, Key, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import api from '@/services/api';
 
 export default function SettingsPage() {
   const store = useJarvisStore();
@@ -14,11 +15,37 @@ export default function SettingsPage() {
     anthropic: '',
     groq: ''
   });
+  const [requiredKey, setRequiredKey] = useState('');
+  const [modalProvider, setModalProvider] = useState<string | null>(null);
+  const [loadingLocalModels, setLoadingLocalModels] = useState(false);
+
+  const fetchLocalModels = async () => {
+    setLoadingLocalModels(true);
+    await store.fetchLocalModels();
+    setLoadingLocalModels(false);
+  };
+
+  const getRequiredKey = (model: string) => {
+    const m = model.toLowerCase();
+    if (m.includes('claude') || m.includes('anthropic')) return 'anthropic';
+    if (m.includes('gpt') || m.includes('openai')) return 'openai';
+    if (m.includes('gemini')) return 'gemini';
+    if (m.includes('llama') || m.includes('groq')) return 'groq';
+    return '';
+  };
 
   useEffect(() => {
     store.fetchPreferences();
-    store.fetchLocalModels();
+    fetchLocalModels();
   }, []);
+
+  useEffect(() => {
+    if (store.userPreferences) {
+      const preferred = store.userPreferences.preferred_model || 'gpt-4o';
+      const activeModel = preferred === 'ollama' ? (store.userPreferences.ollama_model || '') : preferred;
+      setRequiredKey(getRequiredKey(activeModel));
+    }
+  }, [store.userPreferences]);
 
   const handleSaveKeys = async () => {
     const prefs: any = {};
@@ -34,6 +61,7 @@ export default function SettingsPage() {
   };
 
   const handleModelChange = async (model: string) => {
+    setRequiredKey(getRequiredKey(model));
     // If it's a local model from the list, we set ollama_model and preferred_model="ollama"
     if (store.localModels.includes(model)) {
       await store.updatePreferences({ preferred_model: "ollama", ollama_model: model });
@@ -88,6 +116,24 @@ export default function SettingsPage() {
                     ))}
                   </optgroup>
                 </select>
+                {loadingLocalModels ? (
+                  <p className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Detecting local Ollama models...
+                  </p>
+                ) : store.localModels.length === 0 ? (
+                  <div className="mt-3 p-3 border border-yellow-500/20 bg-yellow-500/5 rounded-md text-xs text-yellow-500 space-y-2">
+                    <p>No local Ollama models detected. Make sure Ollama is running at <code className="bg-black/45 px-1 rounded">localhost:11434</code>.</p>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={fetchLocalModels}
+                      className="border-yellow-500/30 hover:bg-yellow-500/20 text-yellow-500 hover:text-yellow-400 text-[10px] uppercase font-bold py-1 h-auto"
+                    >
+                      Refresh Models
+                    </Button>
+                  </div>
+                ) : null}
                 <p className="text-xs text-muted-foreground mt-2">
                   JARVIS will automatically fallback to other providers if the primary fails.
                 </p>
@@ -103,6 +149,12 @@ export default function SettingsPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              {requiredKey && (
+                <div className="border border-yellow-500/40 bg-yellow-500/10 text-yellow-500 text-xs rounded-md p-3 mb-2 flex items-center gap-2 animate-pulse">
+                  <Key size={14} className="shrink-0" />
+                  <span>An API key is required for your active model choice: <strong>{requiredKey.toUpperCase()}</strong></span>
+                </div>
+              )}
               <div className="space-y-2">
                 <label className="text-xs font-medium text-white/60">OpenAI API Key</label>
                 <input 
@@ -160,7 +212,7 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-4 max-h-[600px] overflow-y-auto">
               {[
-                { id: "google", name: "Google Workspace", desc: "Mail, Calendar, Drive", connected: !!store.userPreferences?.google_oauth_token },
+                { id: "google", name: "Google Workspace", desc: "Mail, Calendar, Drive", connected: !!store.userPreferences?.has_google_token },
                 { id: "github", name: "GitHub", desc: "Repositories, PRs, Issues", connected: !!store.userPreferences?.has_github_token },
                 { id: "notion", name: "Notion", desc: "Workspace, Pages, Databases", connected: !!store.userPreferences?.has_notion_token },
                 { id: "linkedin", name: "LinkedIn", desc: "Profile Insights, Resume Sync", connected: !!store.userPreferences?.has_linkedin_token },
@@ -179,10 +231,19 @@ export default function SettingsPage() {
                     variant={integration.connected ? "default" : "outline"} 
                     size="sm"
                     className={integration.connected ? "bg-green-600 hover:bg-green-700 text-white" : ""}
-                    onClick={() => {
-                      if (!integration.connected) {
-                         // Redirect to our generic oauth URL endpoint to start flow
-                         window.location.href = `/api/v1/auth/oauth/${integration.id}/url`;
+                    onClick={async () => {
+                      if (integration.connected) return;
+                      if (integration.id === "google") {
+                        try {
+                          const res = await api.get('/auth/google/url');
+                          if (res.data?.url) {
+                            window.location.href = res.data.url;
+                          }
+                        } catch (e) {
+                          alert("Google Workspace integration failed to initiate.");
+                        }
+                      } else {
+                        setModalProvider(integration.name);
                       }
                     }}
                   >
@@ -202,6 +263,25 @@ export default function SettingsPage() {
           </Card>
         </div>
       </div>
+
+      {modalProvider && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="bg-slate-900 border border-white/10 rounded-xl p-6 max-w-md w-full mx-4 shadow-2xl animate-in fade-in zoom-in-95 duration-150">
+            <h3 className="text-lg font-bold text-white mb-2">{modalProvider} Integration</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              The {modalProvider} integration is currently under development and will be available in a future update.
+            </p>
+            <div className="flex justify-end">
+              <Button 
+                onClick={() => setModalProvider(null)}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium rounded-md px-4 py-2"
+              >
+                Dismiss
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

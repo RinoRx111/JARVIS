@@ -395,11 +395,15 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
             langchain_history.append(AIMessage(content=msg.content))
     langchain_history.append(HumanMessage(content=prompt))
 
+    # Save user message to database immediately
+    db.add(Message(conversation_id=conversation.id, role="user", content=prompt))
+    db.commit()
+
     # Basic token estimation and Memory Compression
     current_tokens = sum(len(m.content) for m in langchain_history) // 4
     agent_reply = ""
     
-    if current_tokens > user.token_limit:
+    if user.token_limit > 0 and current_tokens > user.token_limit:
         # Find a safe boundary (HumanMessage) to truncate at to avoid orphaned tool calls
         safe_index = len(langchain_history) - 1
         for i in range(len(langchain_history) - 2, -1, -1):
@@ -492,9 +496,6 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
     # Synthesize audio speech
     voice_url = await synthesize_voice_elevenlabs(agent_reply)
 
-    # Save messages to database
-    db.add(Message(conversation_id=conversation.id, role="user", content=prompt))
-    
     # Save intermediate tool execution steps
     for m in accumulated_messages:
         from langchain_core.messages import ToolMessage, AIMessage

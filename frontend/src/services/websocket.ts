@@ -8,9 +8,18 @@ class WebSocketService {
   private maxReconnectAttempts = 5;
 
   init() {
-    if (this.socket) return;
+    if (this.socket && this.socket.readyState === WebSocket.OPEN) return;
     
-    const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+    if (this.socket) {
+      this.close();
+    }
+    
+    let apiBase = process.env.NEXT_PUBLIC_API_URL;
+    if (!apiBase && typeof window !== 'undefined') {
+      apiBase = `http://${window.location.hostname}:8000`;
+    } else if (!apiBase) {
+      apiBase = 'http://localhost:8000';
+    }
     const wsProtocol = apiBase.startsWith('https') ? 'wss:' : 'ws:';
     const wsHost = apiBase.replace(/^https?:\/\//, '');
     const token = useJarvisStore.getState().token;
@@ -69,7 +78,8 @@ class WebSocketService {
           }
         } else if (data.type === 'agent_response') {
           // Final response
-          store.setCoreStatus(data.voice_url ? 'SPEAKING' : 'STANDBY');
+          const isLocalVoiceActive = !data.voice_url && store.isVoiceActive;
+          store.setCoreStatus((data.voice_url || isLocalVoiceActive) ? 'SPEAKING' : 'STANDBY');
           store.setVoicePlaybackUrl(data.voice_url || null);
           if (data.conversation_id) {
             useJarvisStore.setState({ activeConversationId: data.conversation_id });
@@ -116,6 +126,7 @@ class WebSocketService {
       this.socket.close();
       this.socket = null;
     }
+    this.reconnectAttempts = 0;
   }
 
   async sendVoiceChunk(audioBlob: Blob) {

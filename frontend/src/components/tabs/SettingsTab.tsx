@@ -28,7 +28,7 @@ export default function SettingsTab() {
       setPrefs(p => ({
         ...p,
         preferred_model: store.userPreferences.preferred_model || 'gpt-4o',
-        token_limit: store.userPreferences.token_limit || 8000,
+        token_limit: store.userPreferences.token_limit !== undefined ? store.userPreferences.token_limit : 8000,
         ollama_model: store.userPreferences.ollama_model || ''
       }));
     }
@@ -78,13 +78,18 @@ export default function SettingsTab() {
 
             <div>
               <label className="block text-[10px] text-cyan-400/60 uppercase tracking-widest mb-1.5">Max Token Quota per Session</label>
-              <input
-                type="number"
+              <select
                 value={prefs.token_limit}
-                onChange={(e) => setPrefs({...prefs, token_limit: parseInt(e.target.value) || 8000})}
+                onChange={(e) => setPrefs({...prefs, token_limit: parseInt(e.target.value)})}
                 className="w-full bg-slate-950/80 border border-cyan-500/20 rounded px-3 py-2 text-xs text-cyan-300 focus:outline-none focus:border-cyan-400 font-mono"
-              />
-              <p className="text-[9px] text-cyan-500/50 mt-1 uppercase">Exceeding triggers auto-compression</p>
+              >
+                <option value={4000}>4,000 Tokens</option>
+                <option value={8000}>8,000 Tokens</option>
+                <option value={16000}>16,000 Tokens</option>
+                <option value={32000}>32,000 Tokens</option>
+                <option value={0}>Unlimited</option>
+              </select>
+              <p className="text-[9px] text-cyan-500/50 mt-1 uppercase">Set 0 for no limit</p>
             </div>
 
             <div>

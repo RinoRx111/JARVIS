@@ -79,3 +79,25 @@ def test_role_checker_class(session: Session):
     # Both checker allows both
     assert both_checker(admin_user) == admin_user
     assert both_checker(standard_user) == standard_user
+
+def test_refresh_token_endpoint(client: TestClient, session: Session):
+    from app.core.security import create_refresh_token
+    # Setup test user directly in DB
+    user = User(email="refresh_test@example.com", is_active=True, role=Role.USER)
+    session.add(user)
+    session.commit()
+    session.refresh(user)
+
+    # Generate refresh token
+    ref_token = create_refresh_token(subject=str(user.id))
+
+    # Test refresh endpoint using JSON request body
+    response = client.post(
+        "/api/v1/auth/refresh",
+        json={"refresh_token": ref_token}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "access_token" in data
+    assert "refresh_token" in data
+    assert data["token_type"] == "bearer"

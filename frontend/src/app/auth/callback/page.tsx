@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useJarvisStore } from '@/hooks/useJarvisStore';
 import { Loader2 } from 'lucide-react';
 import { API_URL } from '@/services/api';
 
-export default function AuthCallback() {
+function AuthCallbackInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const store = useJarvisStore();
@@ -30,8 +30,8 @@ export default function AuthCallback() {
 
         if (res.ok) {
           const data = await res.json();
-          // Store token in Zustand and LocalStorage
-          store.setToken(data.access_token);
+          // Store access and refresh tokens in Zustand and LocalStorage
+          store.setToken(data.access_token, data.refresh_token);
           // Fetch user details immediately to verify login
           await store.checkAuth();
           // Redirect to the main chat interface
@@ -71,5 +71,18 @@ export default function AuthCallback() {
       <h2 className="text-xl font-bold text-white tracking-widest">SYNCHRONIZING WORKSPACE</h2>
       <p className="text-primary/70 text-sm mt-2">Authenticating credentials with Google...</p>
     </div>
+  );
+}
+
+export default function AuthCallback() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-col h-screen items-center justify-center bg-black">
+        <Loader2 className="w-12 h-12 text-primary animate-spin mb-4" />
+        <h2 className="text-xl font-bold text-white tracking-widest">LOADING AUTHENTICATOR</h2>
+      </div>
+    }>
+      <AuthCallbackInner />
+    </Suspense>
   );
 }

@@ -28,6 +28,15 @@ export default function AutomationsPage() {
         <Button variant="glass">New Routine</Button>
       </div>
 
+      {/* Coming Soon Status Banner */}
+      <div className="border border-yellow-500/30 bg-yellow-500/10 text-yellow-500 rounded-xl p-4 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div>
+          <h3 className="font-semibold text-sm">Automations Scheduler Beta</h3>
+          <p className="text-xs text-yellow-500/80 mt-1">This module is currently running in diagnostic mode. Workspace actions are simulated.</p>
+        </div>
+        <span className="text-[10px] uppercase font-mono tracking-widest bg-yellow-500/20 px-2.5 py-1 rounded border border-yellow-500/30 font-bold shrink-0">Development Phase</span>
+      </div>
+
       <div className="flex-1 mt-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {automations.map((auto) => (

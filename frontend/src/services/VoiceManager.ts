@@ -1,3 +1,5 @@
+import { useJarvisStore } from '../hooks/useJarvisStore';
+
 export class VoiceManager {
   private queue: string[] = [];
   private isSpeaking: boolean = false;
@@ -12,6 +14,9 @@ export class VoiceManager {
   private processQueue() {
     if (this.queue.length === 0) {
       this.isSpeaking = false;
+      if (typeof window !== 'undefined') {
+        useJarvisStore.getState().setCoreStatus('STANDBY');
+      }
       return;
     }
 
@@ -21,6 +26,7 @@ export class VoiceManager {
     }
 
     this.isSpeaking = true;
+    useJarvisStore.getState().setCoreStatus('SPEAKING');
     const text = this.queue.shift()!;
     const cleanText = text.replace(/[*_~`#]/g, ''); // Strip markdown
 
@@ -53,6 +59,7 @@ export class VoiceManager {
     this.queue = [];
     if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
       window.speechSynthesis.cancel();
+      useJarvisStore.getState().setCoreStatus('STANDBY');
     }
     this.isSpeaking = false;
   }

@@ -1,11 +1,17 @@
 import os
+import uuid
 import logging
+import asyncio
+import json
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
+from sqlmodel import Session
 
+from app.core.database import get_db, engine
 from app.api.v1.auth import get_current_user
 from app.models.user import User
+from app.models.task import BrowserTask
 from app.services.browser import browser_service
 
 logger = logging.getLogger(__name__)
@@ -24,6 +30,7 @@ class BrowseRequest(BaseModel):
 @router.post("/browse")
 async def execute_browse(
     payload: BrowseRequest,
+    db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """
@@ -42,39 +49,50 @@ async def execute_browse(
             
     try:
         # Schedule browser automation as a background task
-        import uuid
-        import asyncio
         task_id = str(uuid.uuid4())
         
-        # Store task status in memory for this prototype
-        # In production this would be in Redis or DB
-        if not hasattr(router, "tasks"):
-            router.tasks = {}
-            
-        router.tasks[task_id] = {"status": "processing"}
+        # Save task to database
+        db_task = BrowserTask(
+            id=task_id,
+            user_id=current_user.id,
+            status="processing",
+            url=payload.url
+        )
+        db.add(db_task)
+        db.commit()
         
         async def background_browse():
             try:
                 res = await browser_service.browse_url(payload.url, actions=actions_list)
-                if res.get("status") == "success":
-                    raw_path = res.get("screenshot_path")
-                    screenshot_url = None
-                    if raw_path:
-                        filename = os.path.basename(raw_path)
-                        screenshot_url = f"/static/screenshots/{filename}"
-                        
-                    router.tasks[task_id] = {
-                        "status": "success",
-                        "url": res.get("url"),
-                        "title": res.get("title"),
-                        "screenshot_url": screenshot_url,
-                        "actions_log": res.get("actions_log", []),
-                        "extracted_text": res.get("text")[:2000]
-                    }
-                else:
-                    router.tasks[task_id] = {"status": "failed", "error": res.get("message")}
+                with Session(engine) as session:
+                    task = session.get(BrowserTask, task_id)
+                    if task:
+                        if res.get("status") == "success":
+                            raw_path = res.get("screenshot_path")
+                            screenshot_url = None
+                            if raw_path:
+                                filename = os.path.basename(raw_path)
+                                screenshot_url = f"/static/screenshots/{filename}"
+                                
+                            task.status = "success"
+                            task.title = res.get("title")
+                            task.screenshot_url = screenshot_url
+                            task.actions_log = json.dumps(res.get("actions_log", []))
+                            task.extracted_text = res.get("text")[:2000]
+                        else:
+                            task.status = "failed"
+                            task.error = res.get("message")
+                        session.add(task)
+                        session.commit()
             except Exception as e:
-                router.tasks[task_id] = {"status": "failed", "error": str(e)}
+                logger.error(f"Background browse task failed: {e}")
+                with Session(engine) as session:
+                    task = session.get(BrowserTask, task_id)
+                    if task:
+                        task.status = "failed"
+                        task.error = str(e)
+                        session.add(task)
+                        session.commit()
 
         asyncio.create_task(background_browse())
         
@@ -89,9 +107,29 @@ async def execute_browse(
         raise HTTPException(status_code=500, detail=f"Automation error: {str(e)}")
 
 @router.get("/task/{task_id}")
-async def get_browser_task_status(task_id: str):
+async def get_browser_task_status(
+    task_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
     """Poll endpoint to check background browser automation status."""
-    if not hasattr(router, "tasks") or task_id not in router.tasks:
+    task = db.get(BrowserTask, task_id)
+    if not task:
         raise HTTPException(status_code=404, detail="Task not found")
         
-    return router.tasks[task_id]
+    actions_log = []
+    if task.actions_log:
+        try:
+            actions_log = json.loads(task.actions_log)
+        except Exception:
+            actions_log = []
+            
+    return {
+        "status": task.status,
+        "url": task.url,
+        "title": task.title,
+        "screenshot_url": task.screenshot_url,
+        "actions_log": actions_log,
+        "extracted_text": task.extracted_text,
+        "error": task.error
+    }

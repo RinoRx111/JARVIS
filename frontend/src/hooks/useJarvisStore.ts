@@ -80,6 +80,7 @@ interface JarvisState {
   register: (email: string, password: string) => Promise<boolean>;
   logout: () => void;
   checkAuth: () => Promise<boolean>;
+  setToken: (token: string | null, refreshToken?: string | null) => void;
 
   // Navigation
   activeTab: 'dashboard' | 'chat' | 'agents' | 'browser' | 'gmail' | 'calendar' | 'memory' | 'settings' | 'profile' | 'analytics';
@@ -182,9 +183,10 @@ interface JarvisState {
   fetchAnalytics: () => Promise<void>;
 }
 
-const speakLocalTTS = (text: string) => {
+const speakLocalTTS = (text: string, setCoreStatus?: (status: 'STANDBY' | 'THINKING' | 'LISTENING' | 'SPEAKING') => void) => {
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.cancel(); // Stop any currently playing audio
+    if (setCoreStatus) setCoreStatus('SPEAKING');
     
     // 1. Remove URLs
     let cleanText = text.replace(/https?:\/\/[^\s]+/g, '');
@@ -199,6 +201,14 @@ const speakLocalTTS = (text: string) => {
     const voices = window.speechSynthesis.getVoices();
     const voice = voices.find(v => v.name.includes('Google UK English Male') || v.name.includes('Microsoft Mark') || v.name.includes('Daniel') || v.name.includes('English'));
     if (voice) utterance.voice = voice;
+    
+    utterance.onend = () => {
+      if (setCoreStatus) setCoreStatus('STANDBY');
+    };
+    utterance.onerror = () => {
+      if (setCoreStatus) setCoreStatus('STANDBY');
+    };
+    
     window.speechSynthesis.speak(utterance);
   }
 };
@@ -225,7 +235,11 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
     try {
       const res = await api.post('/auth/login', { email, password });
       const token = res.data.access_token;
+      const refreshToken = res.data.refresh_token;
       localStorage.setItem('jarvis_token', token);
+      if (refreshToken) {
+        localStorage.setItem('jarvis_refresh_token', refreshToken);
+      }
       set({ token });
       await get().checkAuth();
       return true;
@@ -249,7 +263,22 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
 
   logout: () => {
     localStorage.removeItem('jarvis_token');
+    localStorage.removeItem('jarvis_refresh_token');
     set({ token: null, user: null, messages: [], activeConversationId: null });
+  },
+
+  setToken: (token, refreshToken) => {
+    if (token) {
+      localStorage.setItem('jarvis_token', token);
+      set({ token });
+    } else {
+      localStorage.removeItem('jarvis_token');
+      localStorage.removeItem('jarvis_refresh_token');
+      set({ token: null });
+    }
+    if (refreshToken) {
+      localStorage.setItem('jarvis_refresh_token', refreshToken);
+    }
   },
 
   checkAuth: async () => {
@@ -326,7 +355,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
       if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
         window.speechSynthesis.cancel();
       }
-      set({ voicePlaybackUrl: null });
+      set({ voicePlaybackUrl: null, coreStatus: 'STANDBY' });
     }
   },
   voicePlaybackUrl: null,
@@ -410,10 +439,11 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
       
       const assistantMessage = { id: crypto.randomUUID(), role: 'assistant', content: replyText, voice_url, created_at: new Date().toISOString() } as Message;
 
+      const isLocalVoiceActive = !voice_url && get().isVoiceActive;
       set((state) => ({
         messages: [...state.messages.slice(0, -1), assistantMessage],
         activeConversationId: conversation_id,
-        coreStatus: voice_url ? 'SPEAKING' : 'STANDBY',
+        coreStatus: (voice_url || isLocalVoiceActive) ? 'SPEAKING' : 'STANDBY',
         voicePlaybackUrl: voice_url || null
       }));
 
@@ -422,7 +452,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
       if (voice_url) {
         get().addNotification("Voice synthesizer output generated.");
       } else if (get().isVoiceActive) {
-        speakLocalTTS(replyText);
+        speakLocalTTS(replyText, get().setCoreStatus);
         get().addNotification("Local TTS voice fallback activated.");
       }
     } catch (err) {

@@ -24,3 +24,18 @@ class AgentTask(SQLModel, table=True):
 
     # Relationships
     user: "User" = Relationship(back_populates="tasks")
+
+
+class BrowserTask(SQLModel, table=True):
+    __tablename__ = "browser_tasks"
+
+    id: str = Field(primary_key=True)
+    user_id: int = Field(foreign_key="users.id")
+    status: str = Field(default="processing")  # "processing", "success", "failed"
+    url: Optional[str] = None
+    title: Optional[str] = None
+    screenshot_url: Optional[str] = None
+    actions_log: Optional[str] = None  # JSON serialized list of operations
+    extracted_text: Optional[str] = None
+    error: Optional[str] = None
+    created_at: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))

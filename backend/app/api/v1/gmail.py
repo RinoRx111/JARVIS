@@ -8,6 +8,8 @@ from app.core.database import get_db
 from app.api.v1.auth import get_current_user
 from app.models.user import User
 from app.services.google_workspace import google_workspace_service
+from app.services.llm import route_llm
+from langchain_core.messages import HumanMessage
 
 logger = logging.getLogger(__name__)
 
@@ -96,16 +98,14 @@ async def generate_smart_reply(
     current_user: User = Depends(get_current_user)
 ):
     """AI drafts a quick response draft based on incoming snippet context."""
-    snippet = payload.snippet.lower()
-    
-    # Simple rule-based quick response generations representing JARVIS's voice
-    if "budget" in snippet or "financial" in snippet:
-        reply = "I have reviewed the updates and the margins look correct. Let's proceed with the clean energy budget allocation."
-    elif "security" in snippet or "logs" in snippet:
-        reply = "Isolate the sector 4 terminal immediately and run a complete core memory dump. I am checking the telemetry logs now."
-    elif "telemetry" in snippet or "decrypt" in snippet:
-        reply = "Acknowledged. Initializing decryption scripts on the secure mainframe server now. I will notify you when compiled."
-    else:
+    try:
+        model = route_llm(task_type="fast", user=current_user)
+        response = await model.ainvoke([
+            HumanMessage(content=f"Draft a brief professional reply to this email: {payload.snippet}")
+        ])
+        reply = response.content
+    except Exception as e:
+        logger.error(f"Failed to generate smart reply via LLM: {e}")
         reply = "Understood. I have flagged this message and will queue it for a full response sequence shortly."
 
     return {

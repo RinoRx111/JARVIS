@@ -65,6 +65,13 @@ export function ChatWindow() {
     scrollToBottom();
   }, [store.messages]);
 
+  useEffect(() => {
+    if (store.token) {
+      store.fetchConversations();
+      store.fetchChatHistory();
+    }
+  }, [store.token]);
+
 
 
   const handleSend = (e: React.FormEvent) => {
@@ -124,9 +131,7 @@ export function ChatWindow() {
             variant="ghost" 
             size="sm" 
             onClick={() => {
-              store.setToken(null);
-              store.setUser(null);
-              localStorage.removeItem('jarvis_token');
+              store.logout();
             }}
             className="text-muted-foreground hover:text-destructive"
             title="Sign Out"
@@ -150,7 +155,7 @@ export function ChatWindow() {
             <p className="text-sm font-medium">Awaiting input, Operator.</p>
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar">
+          <div className="p-4 md:p-8 custom-scrollbar">
             {/* Proactive Alerts */}
             {store.alerts && store.alerts.map((alert: any, idx: number) => (
               <div key={`alert-${idx}`} className="my-4 mx-auto max-w-[90%] border border-yellow-500/30 bg-yellow-500/10 rounded-lg p-4 backdrop-blur-md animate-in fade-in slide-in-from-top-4">
@@ -190,10 +195,9 @@ export function ChatWindow() {
                 </div>
               </div>
             )}
-            
-            <div ref={messagesEndRef} />
           </div>
         )}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Input Area */}
@@ -261,7 +265,7 @@ export function ChatWindow() {
               </span>
               <span className="text-cyan-500/30">|</span>
               <span className="text-cyan-500/80 cursor-pointer hover:text-cyan-300 transition-colors" onClick={() => store.setActiveTab('settings')} title="View Limit">
-                LIMIT: {store.userPreferences?.token_limit?.toLocaleString() || '8,000'}
+                LIMIT: {store.userPreferences?.token_limit === 0 ? 'UNLIMITED' : (store.userPreferences?.token_limit?.toLocaleString() || '8,000')}
               </span>
             </div>
           </div>
