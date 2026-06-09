@@ -32,6 +32,7 @@ export function ChatWindow() {
   const setPlan = useJarvisStore((state) => state.setPlan);
   const setVoicePlaybackUrl = useJarvisStore((state) => state.setVoicePlaybackUrl);
   const addMessage = useJarvisStore((state) => state.addMessage);
+  const uploadFile = useJarvisStore((state) => state.uploadFile);
   const setActiveTab = useJarvisStore((state) => state.setActiveTab);
 
   const { isListeningForWakeWord } = useWakeWord();
@@ -45,7 +46,7 @@ export function ChatWindow() {
   const handleChatFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const file = e.target.files[0];
-      const success = await store.uploadFile(file);
+      const success = await uploadFile(file);
       if (success) {
         addNotification(`Uploaded file: ${file.name} to assistant workspace.`);
       } else {

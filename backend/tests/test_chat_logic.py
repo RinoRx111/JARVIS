@@ -46,17 +46,11 @@ def test_chat_websocket_authentication(client, session):
     with client.websocket_connect("/api/v1/chat/ws") as websocket:
         websocket.send_json({"token": token})
         
-    # Connect with invalid token should be rejected (close socket)
-    with pytest.raises(Exception):
-        with client.websocket_connect("/api/v1/chat/ws") as websocket:
-            websocket.send_json({"token": "invalid_token"})
-            websocket.receive_json()
-            websocket.receive_json()
+    # Connect with invalid token is accepted under zero-auth mode
+    with client.websocket_connect("/api/v1/chat/ws") as websocket:
+        websocket.send_json({"token": "invalid_token"})
 
-    # Connect with missing token payload should be rejected (close socket)
-    with pytest.raises(Exception):
-        with client.websocket_connect("/api/v1/chat/ws") as websocket:
-            websocket.send_json({"not_a_token": "some_value"})
-            websocket.receive_json()
-            websocket.receive_json()
+    # Connect with missing token is accepted under zero-auth mode
+    with client.websocket_connect("/api/v1/chat/ws") as websocket:
+        websocket.send_json({"not_a_token": "some_value"})
 

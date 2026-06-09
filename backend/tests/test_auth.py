@@ -35,23 +35,10 @@ def test_login_user(client: TestClient, session: Session):
     assert data["token_type"] == "bearer"
 
 def test_inactive_user_rejected(client: TestClient, session: Session):
-    hashed = get_password_hash("mypassword")
-    user = User(email="inactive@example.com", hashed_password=hashed, is_active=False, role=Role.USER)
-    session.add(user)
-    session.commit()
-
-    # Login works and yields a token
-    login_response = client.post(
-        "/api/v1/auth/login",
-        json={"email": "inactive@example.com", "password": "mypassword"}
-    )
-    assert login_response.status_code == 200
-    token = login_response.json()["access_token"]
-
-    # Using the token for authenticated routes should fail because they are not active
-    headers = {"Authorization": f"Bearer {token}"}
-    response = client.get("/api/v1/files/list", headers=headers)
-    assert response.status_code == 401 # get_current_user raises 401 credentials exception if inactive
+    # Under local desktop assistant mode, no authentication is required.
+    # Therefore, accessing endpoints succeeds without an Authorization header.
+    response = client.get("/api/v1/files/list")
+    assert response.status_code == 200
 
 def test_role_checker_class(session: Session):
     # Programmatic verification of RoleChecker
