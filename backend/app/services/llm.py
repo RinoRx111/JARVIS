@@ -142,4 +142,8 @@ def route_llm(task_type: Optional[str] = None, temperature: float = 0.7, user: O
     if groq:
         return groq
         
-    raise ValueError("Groq LLM provider is not configured or available. Please configure your Groq API key.")
+    raise ValueError(
+        f"Groq LLM provider is not configured. "
+        f"GROQ_API_KEY loaded: {bool(settings.GROQ_API_KEY)}. "
+        f"Check your .env file — set GROQ_API_KEY directly or ensure GROQ_API_KEY_FILE points to a valid file."
+    )

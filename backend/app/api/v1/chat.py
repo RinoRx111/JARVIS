@@ -247,9 +247,10 @@ async def websocket_chat_endpoint(websocket: WebSocket, db: Session = Depends(ge
         # Local desktop mode fallback: always associate with local master user
         user = db.exec(select(User)).first()
         if not user:
+            from app.core.security import get_password_hash
             user = User(
                 email="local_user@jarvis.local",
-                hashed_password="local_password",
+                hashed_password=get_password_hash("jarvis_local_2024"),
                 full_name="Local Master",
                 nickname="Master",
                 is_active=True,
@@ -517,7 +518,7 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
 
     # Save intermediate tool execution steps
     for m in accumulated_messages:
-        from langchain_core.messages import ToolMessage, AIMessage
+        from langchain_core.messages import ToolMessage
         role = "assistant" if isinstance(m, AIMessage) else "tool" if isinstance(m, ToolMessage) else "system"
         content = str(m.content)
         if not content and hasattr(m, "tool_calls") and m.tool_calls:

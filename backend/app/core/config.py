@@ -29,7 +29,7 @@ class Settings(BaseSettings):
 
     # --- VECTOR STORE ---
     CHROMA_HOST: str = "localhost"
-    CHROMA_PORT: int = 8000
+    CHROMA_PORT: int = 8001
 
     # --- RUNTIMES & MODELS ---
     DEFAULT_LLM_PROVIDER: str = "openai"

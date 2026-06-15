@@ -18,11 +18,8 @@ vi.mock('@/hooks/useJarvisStore', () => ({
 }))
 
 describe('AuthOverlay Component', () => {
-  it('renders the login text', () => {
-    render(<AuthOverlay />)
-    // There should be a login or submit button or text somewhere
-    // The exact text depends on the component's implementation
-    const heading = screen.getByRole('heading', { level: 2 })
-    expect(heading).toBeInTheDocument()
+  it('renders nothing when authentication is bypassed', () => {
+    const { container } = render(<AuthOverlay />)
+    expect(container.firstChild).toBeNull()
   })
 })

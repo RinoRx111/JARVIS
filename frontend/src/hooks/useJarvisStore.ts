@@ -173,11 +173,11 @@ interface JarvisState {
   userPreferences: any;
   fetchPreferences: () => Promise<void>;
   updatePreferences: (prefs: any) => Promise<boolean>;
-  
+
   // Local Models
   localModels: string[];
   fetchLocalModels: () => Promise<void>;
-  
+
   // Agent Config
   agentConfig: any;
   fetchAgentConfig: () => Promise<void>;
@@ -192,28 +192,28 @@ const speakLocalTTS = (text: string, setCoreStatus?: (status: 'STANDBY' | 'THINK
   if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
     window.speechSynthesis.cancel(); // Stop any currently playing audio
     if (setCoreStatus) setCoreStatus('SPEAKING');
-    
+
     // 1. Remove URLs
     let cleanText = text.replace(/https?:\/\/[^\s]+/g, '');
     // 2. Remove JSON or code blocks (things between ```)
     cleanText = cleanText.replace(/```[\s\S]*?```/g, ' [Code Block Omitted] ');
     // 3. Remove general markdown characters
     cleanText = cleanText.replace(/[*_~`#\[\]()>-]/g, '');
-    
+
     const utterance = new SpeechSynthesisUtterance(cleanText.trim() || "No readable text available.");
     utterance.rate = 1.05;
     utterance.pitch = 0.95;
     const voices = window.speechSynthesis.getVoices();
     const voice = voices.find(v => v.name.includes('Google UK English Male') || v.name.includes('Microsoft Mark') || v.name.includes('Daniel') || v.name.includes('English'));
     if (voice) utterance.voice = voice;
-    
+
     utterance.onend = () => {
       if (setCoreStatus) setCoreStatus('STANDBY');
     };
     utterance.onerror = () => {
       if (setCoreStatus) setCoreStatus('STANDBY');
     };
-    
+
     window.speechSynthesis.speak(utterance);
   }
 };
@@ -222,49 +222,40 @@ let socket: WebSocket | null = null;
 
 export const useJarvisStore = create<JarvisState>((set, get) => ({
   // Auth initial state
-  token: null,
-  user: null,
-  authLoading: true,
+  token: 'local-bypass-token',
+  user: {
+    id: 1,
+    email: 'local_user@jarvis-local.org',
+    full_name: 'Local Master',
+    nickname: 'Master',
+    role: 'admin',
+    is_active: true
+  },
+  authLoading: false,
   needsSetup: false,
 
   checkSetupStatus: async () => {
-    try {
-      await api.get('/auth/setup-status');
-      set({ needsSetup: false });
-    } catch (err) {
-      console.error(err);
-      set({ needsSetup: false });
-    }
+    set({ needsSetup: false });
   },
 
   login: async (email, password) => {
-    try {
-      const res = await api.post('/auth/login', { email, password });
-      const token = res.data.access_token;
-      const refreshToken = res.data.refresh_token;
-      localStorage.setItem('jarvis_token', token);
-      if (refreshToken) {
-        localStorage.setItem('jarvis_refresh_token', refreshToken);
+    localStorage.setItem('jarvis_token', 'local-bypass-token');
+    set({
+      token: 'local-bypass-token',
+      user: {
+        id: 1,
+        email: 'local_user@jarvis-local.org',
+        full_name: 'Local Master',
+        nickname: 'Master',
+        role: 'admin',
+        is_active: true
       }
-      set({ token });
-      await get().checkAuth();
-      return true;
-    } catch (err) {
-      console.error('Login failed', err);
-      return false;
-    }
+    });
+    return true;
   },
 
   register: async (email, password) => {
-    try {
-      await api.post('/auth/register', { email, password });
-      await get().login(email, password);
-      get().checkSetupStatus();
-      return true;
-    } catch (err) {
-      console.error('Registration failed', err);
-      return false;
-    }
+    return true;
   },
 
   logout: () => {
@@ -288,34 +279,19 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
   },
 
   checkAuth: async () => {
-    let token = localStorage.getItem('jarvis_token');
-    if (!token) {
-      token = "local_desktop_token";
-      localStorage.setItem('jarvis_token', token);
-    }
-
-    try {
-      set({ token });
-      const res = await api.get('/auth/me');
-      set({ user: res.data, authLoading: false });
-      return true;
-    } catch (err) {
-      console.error('Auth check failed', err);
-      // Fallback local mock user structure to avoid blank loading screen
-      set({ 
-        token, 
-        user: { 
-          id: 1, 
-          email: "local_user@jarvis.local", 
-          full_name: "Local Master", 
-          nickname: "Master", 
-          role: "admin", 
-          is_active: true 
-        }, 
-        authLoading: false 
-      });
-      return true;
-    }
+    set({
+      token: 'local-bypass-token',
+      user: {
+        id: 1,
+        email: 'local_user@jarvis-local.org',
+        full_name: 'Local Master',
+        nickname: 'Master',
+        role: 'admin',
+        is_active: true
+      },
+      authLoading: false
+    });
+    return true;
   },
 
   // Navigation state
@@ -456,9 +432,9 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
   sendChatMessage: async (content) => {
     const userMessage = { id: crypto.randomUUID(), role: 'user', content, created_at: new Date().toISOString() } as Message;
     const placeholderAssistant = { id: crypto.randomUUID(), role: 'assistant', content: '[Thinking...]', created_at: new Date().toISOString() } as Message;
-    set({ 
+    set({
       messages: [...get().messages, userMessage, placeholderAssistant],
-      coreStatus: 'THINKING' 
+      coreStatus: 'THINKING'
     });
 
     try {
@@ -469,7 +445,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
       });
 
       const { response: replyText, voice_url, conversation_id } = response.data;
-      
+
       const assistantMessage = { id: crypto.randomUUID(), role: 'assistant', content: replyText, voice_url, created_at: new Date().toISOString() } as Message;
 
       const isLocalVoiceActive = !voice_url && get().isVoiceActive;
@@ -568,15 +544,15 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
     try {
       const initRes = await api.post('/browser/browse', { url, actions });
       const taskId = initRes.data.task_id;
-      
+
       if (!taskId) throw new Error("No task ID returned");
-      
+
       // Poll for completion
       const pollInterval = setInterval(async () => {
         try {
           const statusRes = await api.get(`/browser/task/${taskId}`);
           const taskData = statusRes.data;
-          
+
           if (taskData.status === 'success') {
             clearInterval(pollInterval);
             set({
@@ -598,7 +574,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
           set({ browserStatus: 'failed' });
         }
       }, 2000);
-      
+
     } catch (err: any) {
       console.error(err);
       set({ browserStatus: 'failed' });
@@ -730,7 +706,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
       return false;
     }
   },
-  
+
   localModels: [],
   fetchLocalModels: async () => {
     try {
@@ -771,7 +747,7 @@ export const useJarvisStore = create<JarvisState>((set, get) => ({
         api.get('/analytics/tokens'),
         api.get('/analytics/tools')
       ]);
-      set({ 
+      set({
         analyticsData: {
           tokens: tokenRes.data,
           tools: toolRes.data

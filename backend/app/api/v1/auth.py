@@ -27,7 +27,7 @@ def get_current_user(
     user = db.exec(select(User)).first()
     if not user:
         user = User(
-            email="local_user@jarvis.local",
+            email="local_user@jarvis-local.org",
             hashed_password="local_password",
             full_name="Local Master",
             nickname="Master",

@@ -30,20 +30,20 @@ async def test_blackbox_setup_status():
 
 @pytest.mark.asyncio
 async def test_blackbox_protected_routes_without_auth():
-    """Verify that hitting protected endpoints without JWT returns 401 Unauthorized."""
+    """Verify that hitting endpoints without JWT returns 200 OK under local mode."""
     async with httpx.AsyncClient() as client:
         response_me = await client.get(f"{BASE_URL}/auth/me")
         response_chat = await client.get(f"{BASE_URL}/chat/conversations")
         
-        # Black box assertion: Must be fully protected
-        assert response_me.status_code == 401
-        assert response_chat.status_code == 401
+        # Black box assertion: Must succeed without token
+        assert response_me.status_code == 200
+        assert response_chat.status_code == 200
 
 @pytest.mark.asyncio
 async def test_blackbox_invalid_auth_token():
-    """Verify that hitting protected endpoints with garbage token returns 401."""
+    """Verify that hitting endpoints with any token returns 200 under local mode."""
     async with httpx.AsyncClient() as client:
         headers = {"Authorization": "Bearer not.a.real.jwt"}
         response_chat = await client.get(f"{BASE_URL}/chat/conversations", headers=headers)
         
-        assert response_chat.status_code == 401
+        assert response_chat.status_code == 200

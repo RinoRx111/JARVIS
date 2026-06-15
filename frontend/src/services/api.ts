@@ -90,7 +90,7 @@ api.interceptors.response.use(
 
         api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
         originalRequest.headers.Authorization = `Bearer ${access_token}`;
-        
+
         processQueue(null, access_token);
         isRefreshing = false;
 

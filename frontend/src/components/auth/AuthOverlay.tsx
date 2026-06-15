@@ -10,6 +10,7 @@ import { Lock, User as UserIcon, ShieldAlert, Loader2, Mail } from 'lucide-react
 import { API_URL } from '@/services/api';
 
 export function AuthOverlay() {
+  return null;
   const pathname = usePathname();
   const store = useJarvisStore();
   const checkSetupStatus = useJarvisStore((state) => state.checkSetupStatus);
