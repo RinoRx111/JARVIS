@@ -49,6 +49,21 @@ module.exports = {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        // Semantic colors
+        success: "hsl(var(--success))",
+        warning: "hsl(var(--warning))",
+        // Neutral scale
+        neutral: {
+          900: "#0F0F0F",
+          800: "#171717",
+          700: "#1C1C1C",
+          600: "#262626",
+          500: "#3A3A3A",
+          400: "#616161",
+          300: "#8F8F8F",
+          200: "#BDBDBD",
+          100: "#EDEDED",
+        },
       },
       borderRadius: {
         lg: "var(--radius)",

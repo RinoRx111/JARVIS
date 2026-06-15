@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
+import { cn } from '@/lib/utils';
 
 interface VoiceOrbProps {
   status: 'STANDBY' | 'THINKING' | 'LISTENING' | 'SPEAKING';
@@ -10,111 +11,74 @@ interface VoiceOrbProps {
 
 export default function VoiceOrb({ status, onClick }: VoiceOrbProps) {
   return (
-    <div 
+    <div
       onClick={onClick}
-      className="relative w-20 h-20 flex items-center justify-center cursor-pointer select-none group"
+      className="relative w-12 h-12 flex items-center justify-center cursor-pointer select-none"
       title="Click to interact"
     >
-      {/* 1. Idle state (STANDBY) */}
+      {/* STANDBY — gentle pulse ring */}
       {status === 'STANDBY' && (
-        <motion.div 
-          className="w-full h-full rounded-full bg-[#00C2FF]/20 border border-[#00C2FF]/30 shadow-[0_0_15px_rgba(0,194,255,0.1)]"
-          animate={{
-            scale: [1, 1.06, 1],
-            opacity: [0.7, 0.9, 0.7]
-          }}
-          transition={{
-            duration: 3,
-            repeat: Infinity,
-            ease: "easeInOut"
-          }}
+        <motion.div
+          className="w-full h-full rounded-full bg-[#1C1C1C] border border-[#2A2A2A]"
+          animate={{ scale: [1, 1.04, 1], opacity: [0.8, 1, 0.8] }}
+          transition={{ duration: 3, repeat: Infinity, ease: "easeInOut" }}
         />
       )}
 
-      {/* 2. Listening state (LISTENING) */}
+      {/* LISTENING — expanding ring */}
       {status === 'LISTENING' && (
         <>
-          {/* Expanding Ring */}
-          <motion.div 
-            className="absolute inset-0 rounded-full border-2 border-[#00C2FF]"
-            initial={{ scale: 0.8, opacity: 0.8 }}
-            animate={{ scale: 1.6, opacity: 0 }}
-            transition={{
-              duration: 1.2,
-              repeat: Infinity,
-              ease: "easeOut"
-            }}
+          <motion.div
+            className="absolute inset-0 rounded-full border border-blue-400"
+            initial={{ scale: 0.9, opacity: 0.7 }}
+            animate={{ scale: 1.7, opacity: 0 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "easeOut" }}
           />
-          {/* Inner core pulsing faster */}
-          <motion.div 
-            className="w-full h-full rounded-full bg-[#00C2FF]/40 border border-[#00C2FF]"
-            animate={{
-              scale: [1, 1.1, 1],
-              opacity: [0.8, 1, 0.8]
-            }}
-            transition={{
-              duration: 0.8,
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          />
+          <div className="w-full h-full rounded-full bg-blue-500/15 border border-blue-400/30" />
         </>
       )}
 
-      {/* 3. Thinking state (THINKING) */}
+      {/* THINKING — spinning arc */}
       {status === 'THINKING' && (
-        <svg className="w-full h-full animate-spin" style={{ animationDuration: '1.2s' }} viewBox="0 0 100 100">
-          <defs>
-            <linearGradient id="thinkingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stopColor="#7B61FF" />
-              <stop offset="100%" stopColor="#00C2FF" />
-            </linearGradient>
-          </defs>
-          <circle 
-            cx="50" 
-            cy="50" 
-            r="42" 
-            stroke="url(#thinkingGradient)" 
-            strokeWidth="4" 
-            fill="none" 
+        <svg
+          className="w-full h-full animate-spin"
+          style={{ animationDuration: '1.1s' }}
+          viewBox="0 0 40 40"
+        >
+          <circle
+            cx="20" cy="20" r="16"
+            stroke="#6366f1"
+            strokeWidth="2"
+            fill="none"
             strokeLinecap="round"
-            strokeDasharray="160 80"
+            strokeDasharray="55 30"
+            opacity="0.8"
           />
         </svg>
       )}
 
-      {/* 4. Speaking state (SPEAKING) */}
+      {/* SPEAKING — simple waveform bars */}
       {status === 'SPEAKING' && (
-        <svg className="w-full h-full" viewBox="0 0 100 100">
-          <circle cx="50" cy="50" r="20" fill="none" stroke="#00C2FF" strokeWidth="2" className="animate-pulse" />
-          {/* Radial Waveform Bars */}
-          {[...Array(12)].map((_, i) => {
-            const angle = (i * 360) / 12;
-            const radians = (angle * Math.PI) / 180;
-            const cos = Math.cos(radians);
-            const sin = Math.sin(radians);
-            
-            return (
-              <motion.line
-                key={i}
-                x1={50 + 22 * cos}
-                y1={50 + 22 * sin}
-                stroke="#00C2FF"
-                strokeWidth="3.5"
-                strokeLinecap="round"
-                animate={{
-                  x2: [50 + 26 * cos, 50 + (32 + Math.random() * 14) * cos, 50 + 26 * cos],
-                  y2: [50 + 26 * sin, 50 + (32 + Math.random() * 14) * sin, 50 + 26 * sin]
-                }}
-                transition={{
-                  duration: 0.5 + (i % 4) * 0.08,
-                  repeat: Infinity,
-                  ease: "easeInOut"
-                }}
-              />
-            );
-          })}
-        </svg>
+        <div className="flex items-center gap-0.5 px-2">
+          {[0, 1, 2, 3, 4].map((i) => (
+            <div
+              key={i}
+              className={cn(
+                "w-0.5 rounded-full bg-indigo-400",
+                i === 0 && "animate-speaking-bar-1 h-2",
+                i === 1 && "animate-speaking-bar-2 h-4",
+                i === 2 && "animate-speaking-bar-3 h-5",
+                i === 3 && "animate-speaking-bar-4 h-3",
+                i === 4 && "animate-speaking-bar-5 h-2",
+              )}
+            />
+          ))}
+        </div>
+      )}
+
+      {/* Center dot (for standby only) */}
+      {status === 'STANDBY' && (
+        <div className="absolute h-2 w-2 rounded-full bg-[#616161]" />
       )}
     </div>
   );

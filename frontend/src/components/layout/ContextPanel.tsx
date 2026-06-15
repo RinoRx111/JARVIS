@@ -2,240 +2,212 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Activity, Clock, Database, ChevronRight, ChevronLeft, Terminal, MessageSquare, Plus, Trash2, GitBranch } from 'lucide-react';
+import {
+  Clock, Database, ChevronRight, ChevronLeft,
+  MessageSquare, Plus, Trash2, GitBranch, Cpu, MemoryStick
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Badge } from '@/components/ui/badge';
 import { usePathname } from 'next/navigation';
 import { useJarvisStore } from '@/hooks/useJarvisStore';
-import { Button } from '@/components/ui/button';
 
 export function ContextPanel() {
   const [isOpen, setIsOpen] = useState(true);
   const pathname = usePathname();
   const store = useJarvisStore();
-  const fetchConversations = useJarvisStore((state) => state.fetchConversations);
+  const fetchConversations = useJarvisStore((s) => s.fetchConversations);
 
   useEffect(() => {
-    if (pathname === '/') {
-      fetchConversations();
-    }
+    if (pathname === '/') fetchConversations();
   }, [pathname, fetchConversations]);
 
-  // Telemetry loop: fluctuation stats update every 3 seconds
   useEffect(() => {
     store.updateSystemStats();
-    const interval = setInterval(() => {
-      store.updateSystemStats();
-    }, 3000);
-    return () => clearInterval(interval);
+    const id = setInterval(() => store.updateSystemStats(), 3000);
+    return () => clearInterval(id);
   }, []);
 
   const isChatTab = pathname === '/';
 
   return (
-    <motion.aside
-      initial={false}
-      animate={{ width: isOpen ? 320 : 0 }}
-      className="h-screen relative flex flex-col border-l border-[#1E2A35] bg-[#0E1318] z-40 overflow-hidden text-[#E8EDF2]"
-    >
-      {/* Toggle Button */}
-      <button 
+    <div className="h-screen relative flex shrink-0">
+      {/* Collapse toggle */}
+      <button
         onClick={() => setIsOpen(!isOpen)}
-        className="absolute -left-4 top-1/2 -translate-y-1/2 h-16 w-4 bg-[#0E1318] border border-[#1E2A35] rounded-l-md flex items-center justify-center text-[#6B7F8E] hover:text-[#00C2FF] transition-colors shadow-2xl z-50 pointer-events-auto"
+        className="absolute -left-3 top-1/2 -translate-y-1/2 h-10 w-3 bg-[#111111] border border-[#1F1F1F] rounded-l-md flex items-center justify-center text-[#616161] hover:text-[#EDEDED] transition-colors z-50 shadow-sm"
+        title={isOpen ? "Collapse panel" : "Expand panel"}
       >
-        {isOpen ? <ChevronRight size={12} /> : <ChevronLeft size={12} />}
+        {isOpen ? <ChevronRight size={10} /> : <ChevronLeft size={10} />}
       </button>
 
-      <AnimatePresence>
-        {isOpen && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="flex-1 w-[320px] flex flex-col overflow-hidden"
-          >
-            {/* Panel Header */}
-            <div className="p-4 border-b border-[#1E2A35] flex items-center gap-2 shrink-0">
-              {isChatTab ? (
-                <>
-                  <MessageSquare size={16} className="text-primary" />
-                  <h2 className="text-xs font-mono font-bold tracking-wider text-[#E8EDF2] uppercase">CHAT HISTORY</h2>
-                  <Button variant="ghost" size="icon" className="ml-auto h-6 w-6 text-[#6B7F8E] hover:text-[#00C2FF]" onClick={() => store.startNewChat()}>
-                    <Plus size={14} />
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <Activity size={16} className="text-primary" />
-                  <h2 className="text-xs font-mono font-bold tracking-wider text-[#E8EDF2] uppercase">SYSTEM CONTEXT</h2>
-                  <Badge variant="glass" className="ml-auto text-xs bg-[#00C2FF]/10 text-[#00C2FF] border border-[#00C2FF]/20 px-2 rounded font-mono font-normal">LIVE</Badge>
-                </>
-              )}
-            </div>
-
-            {/* Scrollable primary content */}
-            <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-6 custom-scrollbar">
-              {isChatTab ? (
-                <div className="space-y-2">
-                  {store.conversations.length === 0 ? (
-                    <div className="text-xs text-[#6B7F8E] text-center mt-4 font-mono uppercase">No previous conversations</div>
-                  ) : (
-                    store.conversations.map((conv: any) => (
-                      <div 
-                        key={conv.id}
-                        className={cn(
-                          "p-3 rounded-lg transition-all border group relative flex items-center justify-between",
-                          store.activeConversationId === conv.id 
-                            ? "bg-[#00C2FF]/5 border-[#00C2FF]/25 text-[#00C2FF]" 
-                            : "bg-[#141B22]/20 border-[#1E2A35]/30 hover:border-[#1E2A35] text-[#6B7F8E] hover:text-[#E8EDF2]"
-                        )}
-                      >
-                        <div className="flex-1 cursor-pointer overflow-hidden" onClick={() => store.fetchChatHistory(conv.id)}>
-                          <h3 className="text-sm font-medium truncate pr-6 font-mono uppercase tracking-wide">{conv.title || "New Conversation"}</h3>
-                          <p className="text-xs opacity-60 mt-1 font-mono">
-                            {new Date(conv.created_at).toLocaleDateString()}
-                          </p>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          className="h-6 w-6 absolute right-2 opacity-0 group-hover:opacity-100 text-[#FF4D4D] hover:bg-[#FF4D4D]/10 transition-opacity"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            store.deleteConversation(conv.id);
-                          }}
-                        >
-                          <Trash2 size={12} />
-                        </Button>
-                      </div>
-                    ))
-                  )}
-                </div>
-              ) : (
-                <>
-                  {/* Agent Activity Section */}
-                  <section className="space-y-3">
-                    <h3 className="text-xs font-mono font-bold tracking-widest text-[#6B7F8E] flex items-center gap-2">
-                      <Terminal size={14} />
-                      ACTIVE AGENTS
-                    </h3>
-                    <div className="space-y-3">
-                      <div className="glass-card p-3 rounded-lg border border-[#1E2A35] bg-[#0E1318]/50 relative overflow-hidden group">
-                        <div className="absolute top-0 left-0 w-[2px] h-full bg-[#00C2FF] shadow-[0_0_8px_rgba(0,194,255,0.5)]" />
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="text-sm font-medium text-[#E8EDF2]">Research Agent</span>
-                          <span className="text-xs text-[#00E5A0] animate-pulse">Running</span>
-                        </div>
-                        <p className="text-xs text-[#6B7F8E] line-clamp-2 leading-relaxed font-mono">
-                          Scanning host workspace for git repository targets...
-                        </p>
-                      </div>
-                    </div>
-                  </section>
-
-                  {/* Memory Context Section */}
-                  <section className="space-y-3">
-                    <h3 className="text-xs font-mono font-bold tracking-widest text-[#6B7F8E] flex items-center gap-2">
-                      <Database size={14} />
-                      ACTIVE CONTEXT
-                    </h3>
-                    <div className="space-y-2">
-                      <div className="bg-[#141B22]/50 border border-[#1E2A35] p-2.5 rounded-lg text-xs text-[#6B7F8E] font-mono leading-relaxed">
-                        &gt; Host files access authorized
-                      </div>
-                      <div className="bg-[#141B22]/50 border border-[#1E2A35] p-2.5 rounded-lg text-xs text-[#6B7F8E] font-mono leading-relaxed">
-                        &gt; Python sandbox runs locally
-                      </div>
-                    </div>
-                  </section>
-
-                  {/* Audit Logs */}
-                  <section className="space-y-3">
-                    <h3 className="text-xs font-mono font-bold tracking-widest text-[#6B7F8E] flex items-center gap-2">
-                      <Clock size={14} />
-                      RECENT EVENTS
-                    </h3>
-                    <div className="space-y-3 relative before:absolute before:inset-0 before:ml-1.5 before:h-full before:w-[1px] before:bg-[#1E2A35]/50">
-                      <div className="relative flex items-center justify-between group">
-                        <div className="flex items-center justify-center w-3 h-3 rounded-full border border-[#00C2FF] bg-[#080B0F] shrink-0 z-10 -ml-0.5 shadow-[0_0_5px_rgba(0,194,255,0.5)]"></div>
-                        <div className="w-[calc(100%-1.5rem)] ml-3">
-                          <div className="text-xs text-[#6B7F8E] font-mono">Just now</div>
-                          <div className="text-xs text-[#E8EDF2] font-mono">Uplink Synced</div>
-                        </div>
-                      </div>
-                      <div className="relative flex items-center justify-between group">
-                        <div className="flex items-center justify-center w-3 h-3 rounded-full border border-[#1E2A35] bg-[#080B0F] shrink-0 z-10 -ml-0.5"></div>
-                        <div className="w-[calc(100%-1.5rem)] ml-3">
-                          <div className="text-xs text-[#6B7F8E] font-mono">2 min ago</div>
-                          <div className="text-xs text-[#6B7F8E] font-mono">Workspace Loaded</div>
-                        </div>
-                      </div>
-                    </div>
-                  </section>
-                </>
-              )}
-            </div>
-
-            {/* Permanent Diagnostics HUD at the bottom */}
-            <div className="p-4 border-t border-[#1E2A35] bg-[#0E1318]/90 flex flex-col gap-4 shrink-0">
-              {/* CPU / RAM Telemetry */}
-              <div className="space-y-3">
-                <h4 className="text-xs font-mono font-bold tracking-widest text-[#00C2FF] uppercase">System Telemetry</h4>
-                <div className="space-y-2.5">
-                  {/* CPU Meter */}
-                  <div>
-                    <div className="flex justify-between text-xs font-mono text-[#6B7F8E] mb-1">
-                      <span>CPU USAGE</span>
-                      <span className="text-[#00C2FF] font-bold">{store.cpuUsage}%</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-[#141B22] rounded-full overflow-hidden border border-[#1E2A35]/30">
-                      <motion.div 
-                        className="h-full bg-[#00C2FF]"
-                        animate={{ width: `${store.cpuUsage}%` }}
-                        transition={{ duration: 0.5, ease: "easeOut" }}
-                      />
-                    </div>
-                  </div>
-                  {/* RAM Meter */}
-                  <div>
-                    <div className="flex justify-between text-xs font-mono text-[#6B7F8E] mb-1">
-                      <span>RAM USAGE</span>
-                      <span className="text-[#7B61FF] font-bold">{store.ramUsage}%</span>
-                    </div>
-                    <div className="h-1.5 w-full bg-[#141B22] rounded-full overflow-hidden border border-[#1E2A35]/30">
-                      <motion.div 
-                        className="h-full bg-[#7B61FF]"
-                        animate={{ width: `${store.ramUsage}%` }}
-                        transition={{ duration: 0.5, ease: "easeOut" }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Git Repository Status */}
-              <div className="pt-3 border-t border-[#1E2A35]/30 space-y-2">
-                <h4 className="text-xs font-mono font-bold tracking-widest text-[#00E5A0] uppercase flex items-center gap-1.5">
-                  <GitBranch size={12} />
-                  Git Workspace
-                </h4>
-                <div className="flex items-center justify-between text-xs font-mono text-[#6B7F8E]">
-                  <span className="flex items-center gap-1.5">
-                    <span className="w-1.5 h-1.5 rounded-full bg-[#00E5A0] animate-pulse"></span>
-                    BRANCH
+      <motion.aside
+        initial={false}
+        animate={{ width: isOpen ? 260 : 0 }}
+        transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+        className="h-full flex flex-col border-l border-[#1F1F1F] bg-[#111111] overflow-hidden"
+      >
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="flex-1 w-[260px] flex flex-col overflow-hidden"
+            >
+              {/* Header */}
+              <div className="flex h-14 items-center justify-between px-4 border-b border-[#1F1F1F] shrink-0">
+                <div className="flex items-center gap-2">
+                  {isChatTab
+                    ? <MessageSquare size={14} className="text-indigo-400" />
+                    : <Database size={14} className="text-indigo-400" />}
+                  <span className="text-[12px] font-semibold text-[#8F8F8F] tracking-wider uppercase">
+                    {isChatTab ? "History" : "Context"}
                   </span>
-                  <span className="text-[#E8EDF2] font-semibold">main</span>
                 </div>
-                <div className="flex items-center justify-between text-xs font-mono text-[#6B7F8E]">
-                  <span>PENDING DIFFS</span>
-                  <span className="text-[#F5A623] font-bold">4 files</span>
+                {isChatTab && (
+                  <button
+                    onClick={() => store.startNewChat()}
+                    className="p-1.5 rounded-md text-[#616161] hover:text-[#EDEDED] hover:bg-[#1C1C1C] transition-colors"
+                    title="New chat"
+                  >
+                    <Plus size={14} />
+                  </button>
+                )}
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-3 flex flex-col gap-4">
+                {isChatTab ? (
+                  /* --- Conversation List --- */
+                  <div className="flex flex-col gap-1">
+                    {store.conversations.length === 0 ? (
+                      <div className="flex flex-col items-center justify-center py-12 gap-3 text-center">
+                        <div className="h-10 w-10 rounded-full bg-[#1C1C1C] flex items-center justify-center">
+                          <MessageSquare size={16} className="text-[#3A3A3A]" />
+                        </div>
+                        <p className="text-[12px] text-[#616161]">No conversations yet</p>
+                      </div>
+                    ) : (
+                      store.conversations.map((conv: any) => (
+                        <div
+                          key={conv.id}
+                          className={cn(
+                            "group flex items-center justify-between rounded-md px-3 py-2.5 cursor-pointer transition-colors",
+                            store.activeConversationId === conv.id
+                              ? "bg-[#1C1C1C] text-[#EDEDED]"
+                              : "text-[#8F8F8F] hover:bg-[#171717] hover:text-[#EDEDED]"
+                          )}
+                          onClick={() => store.fetchChatHistory(conv.id)}
+                        >
+                          <div className="flex-1 min-w-0">
+                            <p className="text-[13px] font-medium truncate leading-tight">
+                              {conv.title || "New conversation"}
+                            </p>
+                            <p className="text-[11px] text-[#616161] mt-0.5">
+                              {new Date(conv.created_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                            </p>
+                          </div>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); store.deleteConversation(conv.id); }}
+                            className="ml-2 p-1 rounded opacity-0 group-hover:opacity-100 text-[#616161] hover:text-red-400 hover:bg-red-400/10 transition-all"
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                ) : (
+                  /* --- System Context --- */
+                  <div className="flex flex-col gap-5">
+                    {/* Active Context */}
+                    <div>
+                      <p className="text-label mb-2 flex items-center gap-1.5">
+                        <Database size={11} /> Active Context
+                      </p>
+                      <div className="flex flex-col gap-1.5">
+                        {["Host files access authorized", "Python sandbox local"].map((item) => (
+                          <div key={item} className="flex items-center gap-2 text-[12px] text-[#8F8F8F] bg-[#171717] rounded-md px-3 py-2 border border-[#1F1F1F]">
+                            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 shrink-0" />
+                            {item}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Recent Events */}
+                    <div>
+                      <p className="text-label mb-2 flex items-center gap-1.5">
+                        <Clock size={11} /> Recent Events
+                      </p>
+                      <div className="flex flex-col gap-2">
+                        {[
+                          { label: "Uplink synced", time: "Just now", active: true },
+                          { label: "Workspace loaded", time: "2 min ago", active: false },
+                        ].map((event) => (
+                          <div key={event.label} className="flex items-center gap-3 text-[12px]">
+                            <div className={cn(
+                              "h-1.5 w-1.5 rounded-full shrink-0",
+                              event.active ? "bg-indigo-400" : "bg-[#3A3A3A]"
+                            )} />
+                            <span className={event.active ? "text-[#EDEDED]" : "text-[#616161]"}>{event.label}</span>
+                            <span className="ml-auto text-[11px] text-[#616161]">{event.time}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Footer — System Stats */}
+              <div className="p-3 border-t border-[#1F1F1F] flex flex-col gap-3 shrink-0">
+                {/* CPU */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-[#616161] flex items-center gap-1.5">
+                      <Cpu size={10} /> CPU
+                    </span>
+                    <span className="text-[11px] font-medium text-[#8F8F8F]">{store.cpuUsage}%</span>
+                  </div>
+                  <div className="h-1 w-full bg-[#1F1F1F] rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-indigo-500 rounded-full"
+                      animate={{ width: `${store.cpuUsage}%` }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                    />
+                  </div>
+                </div>
+
+                {/* RAM */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex justify-between items-center">
+                    <span className="text-[11px] text-[#616161] flex items-center gap-1.5">
+                      <MemoryStick size={10} /> RAM
+                    </span>
+                    <span className="text-[11px] font-medium text-[#8F8F8F]">{store.ramUsage}%</span>
+                  </div>
+                  <div className="h-1 w-full bg-[#1F1F1F] rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-violet-500 rounded-full"
+                      animate={{ width: `${store.ramUsage}%` }}
+                      transition={{ duration: 0.6, ease: "easeOut" }}
+                    />
+                  </div>
+                </div>
+
+                {/* Git branch */}
+                <div className="flex items-center justify-between pt-1 border-t border-[#1F1F1F]">
+                  <span className="text-[11px] text-[#616161] flex items-center gap-1.5">
+                    <GitBranch size={10} /> Branch
+                  </span>
+                  <span className="text-[11px] font-medium text-[#8F8F8F]">main</span>
                 </div>
               </div>
-            </div>
-
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.aside>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.aside>
+    </div>
   );
 }

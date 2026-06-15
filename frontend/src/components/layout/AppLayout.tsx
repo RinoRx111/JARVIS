@@ -27,10 +27,9 @@ export function AppLayout({ children }: AppLayoutProps) {
     <>
       <AuthOverlay />
       <ToastContainer />
-      <div className="flex h-screen w-full bg-background overflow-hidden selection:bg-primary/30 relative">
+      <div className="flex h-screen w-full bg-[#0F0F0F] overflow-hidden">
         <Sidebar />
-        <main className="flex-1 h-full overflow-hidden flex flex-col relative z-10">
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-primary/5 via-background to-background -z-10" />
+        <main className="flex-1 h-full overflow-hidden flex flex-col min-w-0">
           {children}
         </main>
         <ContextPanel />
@@ -38,3 +37,4 @@ export function AppLayout({ children }: AppLayoutProps) {
     </>
   );
 }
+

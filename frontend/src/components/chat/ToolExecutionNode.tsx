@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ChevronDown, ChevronUp, Terminal, CheckCircle2, CircleDashed } from "lucide-react";
+import { ChevronDown, ChevronUp, CheckCircle2, Loader2, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 export interface ToolExecutionProps {
@@ -13,46 +13,38 @@ export interface ToolExecutionProps {
   output?: string;
 }
 
-export function ToolExecutionNode({ tool, index }: { tool: ToolExecutionProps; index: number }) {
+export function ToolExecutionNode({ tool }: { tool: ToolExecutionProps; index: number }) {
   const [expanded, setExpanded] = useState(false);
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.95 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="my-2 ml-12 mr-auto max-w-[70%]"
+      initial={{ opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="my-1.5 ml-10 mr-auto max-w-sm"
     >
-      <div className="rounded-lg border border-[#1E2A35] bg-[#0E1318] overflow-hidden shadow-sm backdrop-blur-sm">
+      <div className="rounded-lg border border-[#262626] bg-[#171717] overflow-hidden text-[12px]">
         <button
           onClick={() => setExpanded(!expanded)}
-          className={cn(
-            "flex w-full items-center justify-between px-3 py-2 text-xs transition-colors hover:bg-white/[0.03]",
-            tool.status === "running" ? "bg-primary/5" : "bg-transparent"
-          )}
+          className="flex w-full items-center justify-between px-3 py-2 hover:bg-[#1C1C1C] transition-colors"
         >
           <div className="flex items-center gap-2">
             {tool.status === "running" ? (
-              <CircleDashed size={14} className="animate-spin text-primary" />
+              <Loader2 size={12} className="animate-spin text-amber-400" />
             ) : tool.status === "success" ? (
-              <CheckCircle2 size={14} className="text-[#00E5A0]" />
+              <CheckCircle2 size={12} className="text-emerald-400" />
             ) : (
-              <Terminal size={14} className="text-[#FF4D4D]" />
+              <XCircle size={12} className="text-red-400" />
             )}
-            
-            <span className="font-mono text-muted-foreground uppercase tracking-wider">
+            <span className="font-mono text-[#8F8F8F] tracking-wide">
               {tool.toolName}
             </span>
-            
             {tool.durationMs && (
-              <span className="text-xs text-muted-foreground/50 ml-2 font-mono">
-                {tool.durationMs}ms
-              </span>
+              <span className="text-[#616161] font-mono">{tool.durationMs}ms</span>
             )}
           </div>
-          
-          <div className="text-muted-foreground hover:text-[#00C2FF] transition-colors">
-            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </div>
+          <span className="text-[#616161]">
+            {expanded ? <ChevronUp size={12} /> : <ChevronDown size={12} />}
+          </span>
         </button>
 
         <AnimatePresence>
@@ -61,16 +53,16 @@ export function ToolExecutionNode({ tool, index }: { tool: ToolExecutionProps; i
               initial={{ height: 0 }}
               animate={{ height: "auto" }}
               exit={{ height: 0 }}
-              className="overflow-hidden border-t border-[#1E2A35]"
+              className="overflow-hidden border-t border-[#262626]"
             >
-              <div className="p-3 bg-[#141B22]/50 font-mono text-xs text-muted-foreground whitespace-pre-wrap max-h-[300px] overflow-y-auto">
+              <div className="p-3 font-mono text-[11px] text-[#616161] whitespace-pre-wrap max-h-64 overflow-y-auto custom-scrollbar">
                 <div className="mb-2">
-                  <span className="text-primary/70 select-none">{'>'} INPUT: </span>
+                  <span className="text-indigo-400/60 select-none">IN: </span>
                   {tool.input || "{}"}
                 </div>
                 <div>
-                  <span className="text-[#00E5A0]/70 select-none">{'>'} OUTPUT: </span>
-                  {tool.output || "..."}
+                  <span className="text-emerald-400/60 select-none">OUT: </span>
+                  {tool.output || "…"}
                 </div>
               </div>
             </motion.div>

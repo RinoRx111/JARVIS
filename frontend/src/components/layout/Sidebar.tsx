@@ -1,116 +1,166 @@
 "use client";
 
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
-import { 
-  MessageSquare, 
-  BrainCircuit, 
-  CheckSquare, 
-  Bot, 
-  FolderSearch, 
-  Zap, 
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  MessageSquare,
+  BrainCircuit,
+  CheckSquare,
+  Bot,
+  FolderSearch,
+  Zap,
   Settings,
-  Menu,
-  ChevronLeft,
-  Activity
+  PanelLeftClose,
+  PanelLeftOpen,
+  Activity,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useJarvisStore } from '@/hooks/useJarvisStore';
 
 const navItems = [
-  { name: 'AI Chat', icon: MessageSquare, href: '/' },
-  { name: 'Memory', icon: BrainCircuit, href: '/memory' },
-  { name: 'Tasks', icon: CheckSquare, href: '/tasks' },
-  { name: 'Agents', icon: Bot, href: '/agents' },
-  { name: 'Files', icon: FolderSearch, href: '/files' },
-  { name: 'Automations', icon: Zap, href: '/automations' },
-  { name: 'Analytics', icon: Activity, href: '/analytics' },
+  { name: 'Chat',        icon: MessageSquare, href: '/' },
+  { name: 'Memory',      icon: BrainCircuit,  href: '/memory' },
+  { name: 'Tasks',       icon: CheckSquare,   href: '/tasks' },
+  { name: 'Agents',      icon: Bot,           href: '/agents' },
+  { name: 'Files',       icon: FolderSearch,  href: '/files' },
+  { name: 'Automations', icon: Zap,           href: '/automations' },
+  { name: 'Analytics',   icon: Activity,      href: '/analytics' },
 ];
 
 export function Sidebar() {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
+  const wsConnected = useJarvisStore((s) => s.wsConnected);
+  const coreStatus = useJarvisStore((s) => s.coreStatus);
 
   return (
     <motion.aside
       initial={false}
-      animate={{ width: isExpanded ? 220 : 64 }}
-      className="h-screen relative flex flex-col border-r border-[#1E2A35] bg-[#0E1318] z-50 overflow-hidden"
+      animate={{ width: collapsed ? 56 : 220 }}
+      transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
+      className="h-screen flex flex-col shrink-0 border-r border-[#1F1F1F] bg-[#111111] z-50 overflow-hidden select-none"
     >
-      <div className="flex h-16 items-center justify-between px-4 border-b border-[#1E2A35]">
-        <motion.div 
-          animate={{ opacity: isExpanded ? 1 : 0 }}
-          className={cn("flex items-center gap-2", !isExpanded && "hidden")}
+      {/* Header */}
+      <div className="flex h-14 items-center justify-between px-3 border-b border-[#1F1F1F]">
+        <AnimatePresence initial={false}>
+          {!collapsed && (
+            <motion.div
+              initial={{ opacity: 0, x: -8 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -8 }}
+              transition={{ duration: 0.15 }}
+              className="flex items-center gap-2.5 overflow-hidden"
+            >
+              <div className="h-6 w-6 rounded-md bg-indigo-500 flex items-center justify-center shrink-0">
+                <Sparkles size={12} className="text-white" />
+              </div>
+              <span className="font-semibold text-[13px] text-[#EDEDED] tracking-tight whitespace-nowrap">
+                JARVIS
+              </span>
+              {/* Status dot */}
+              <span
+                className={cn(
+                  "ml-0.5 h-1.5 w-1.5 rounded-full shrink-0",
+                  wsConnected ? "bg-emerald-400 pulse-dot" : "bg-[#3A3A3A]"
+                )}
+                title={wsConnected ? "Connected" : "Disconnected"}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {collapsed && (
+          <div className="h-6 w-6 rounded-md bg-indigo-500 flex items-center justify-center mx-auto">
+            <Sparkles size={12} className="text-white" />
+          </div>
+        )}
+
+        <button
+          onClick={() => setCollapsed(!collapsed)}
+          className={cn(
+            "p-1.5 rounded-md text-[#616161] hover:text-[#EDEDED] hover:bg-[#1C1C1C]",
+            collapsed && "mx-auto mt-0 ml-auto"
+          )}
+          title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
         >
-          <div className="h-6 w-6 rounded-md bg-gradient-to-tr from-[#00C2FF] to-[#7B61FF] shadow-[0_0_15px_rgba(0,194,255,0.3)]" />
-          <span className="font-mono-style font-bold tracking-widest text-[#E8EDF2] text-xs uppercase">
-            JARVIS
-          </span>
-        </motion.div>
-        
-        <button 
-          onClick={() => setIsExpanded(!isExpanded)}
-          className="p-1.5 rounded-md hover:bg-white/[0.03] transition-colors text-muted-foreground hover:text-[#E8EDF2]"
-        >
-          {isExpanded ? <ChevronLeft size={20} /> : <Menu size={20} />}
+          {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
         </button>
       </div>
 
-      <nav className="flex-1 py-6 px-3 flex flex-col gap-2 overflow-y-auto overflow-x-hidden">
+      {/* Navigation */}
+      <nav className="flex-1 py-3 px-2 flex flex-col gap-0.5 overflow-y-auto overflow-x-hidden custom-scrollbar">
         {navItems.map((item) => {
           const isActive = pathname === item.href;
           return (
             <Link key={item.name} href={item.href}>
               <div
                 className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 transition-all duration-200 group relative rounded-lg",
-                  isActive 
-                    ? "text-primary bg-transparent" 
-                    : "text-muted-foreground hover:bg-white/[0.03] hover:text-[#E8EDF2]"
+                  "flex items-center gap-3 px-2.5 py-2 rounded-md transition-colors relative group",
+                  isActive
+                    ? "bg-[#1C1C1C] text-[#EDEDED]"
+                    : "text-[#8F8F8F] hover:bg-[#171717] hover:text-[#EDEDED]"
                 )}
+                title={collapsed ? item.name : undefined}
               >
                 {isActive && (
                   <motion.div
-                    layoutId="activeTab"
-                    className="absolute left-0 top-0 h-full w-[2px] bg-[#00C2FF] shadow-[0_0_8px_rgba(0,194,255,0.5)]"
+                    layoutId="activeIndicator"
+                    className="absolute left-0 top-1/2 -translate-y-1/2 h-4 w-0.5 bg-indigo-500 rounded-full"
+                    transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   />
                 )}
-                <item.icon size={20} className={cn("min-w-[20px]", isActive ? "text-[#00C2FF]" : "group-hover:text-[#E8EDF2]")} />
-                
-                <motion.span 
-                  animate={{ opacity: isExpanded ? 1 : 0, x: isExpanded ? 0 : -10 }}
-                  className={cn("font-medium text-sm whitespace-nowrap", !isExpanded && "hidden")}
-                >
-                  {item.name}
-                </motion.span>
+                <item.icon
+                  size={16}
+                  className={cn("shrink-0", isActive ? "text-indigo-400" : "text-inherit")}
+                />
+                <AnimatePresence initial={false}>
+                  {!collapsed && (
+                    <motion.span
+                      initial={{ opacity: 0, x: -6 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: -6 }}
+                      transition={{ duration: 0.15 }}
+                      className="text-[13px] font-medium whitespace-nowrap"
+                    >
+                      {item.name}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
               </div>
             </Link>
           );
         })}
       </nav>
 
-      <div className="p-3 border-t border-[#1E2A35]">
+      {/* Footer */}
+      <div className="p-2 border-t border-[#1F1F1F]">
         <Link href="/settings">
-          <div className={cn(
-            "flex items-center gap-3 px-3 py-2.5 transition-all duration-200 group relative rounded-lg",
-            pathname === '/settings'
-              ? "text-primary bg-transparent"
-              : "text-muted-foreground hover:bg-white/[0.03] hover:text-[#E8EDF2]"
-          )}>
-            {pathname === '/settings' && (
-              <motion.div
-                layoutId="activeTab"
-                className="absolute left-0 top-0 h-full w-[2px] bg-[#00C2FF] shadow-[0_0_8px_rgba(0,194,255,0.5)]"
-              />
+          <div
+            className={cn(
+              "flex items-center gap-3 px-2.5 py-2 rounded-md transition-colors",
+              pathname === '/settings'
+                ? "bg-[#1C1C1C] text-[#EDEDED]"
+                : "text-[#8F8F8F] hover:bg-[#171717] hover:text-[#EDEDED]"
             )}
-            <Settings size={20} className="min-w-[20px]" />
-            <motion.span 
-              animate={{ opacity: isExpanded ? 1 : 0 }}
-              className={cn("font-medium text-sm whitespace-nowrap", !isExpanded && "hidden")}
-            >
-              Settings
-            </motion.span>
+            title={collapsed ? "Settings" : undefined}
+          >
+            <Settings size={16} className="shrink-0" />
+            <AnimatePresence initial={false}>
+              {!collapsed && (
+                <motion.span
+                  initial={{ opacity: 0, x: -6 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -6 }}
+                  transition={{ duration: 0.15 }}
+                  className="text-[13px] font-medium whitespace-nowrap"
+                >
+                  Settings
+                </motion.span>
+              )}
+            </AnimatePresence>
           </div>
         </Link>
       </div>

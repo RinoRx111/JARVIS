@@ -2,8 +2,8 @@
 
 import React from "react";
 import { cn } from "@/lib/utils";
-import { Bot, User } from "lucide-react";
 import { motion } from "framer-motion";
+import { Sparkles, User } from "lucide-react";
 
 export interface MessageProps {
   id: string;
@@ -14,58 +14,62 @@ export interface MessageProps {
 }
 
 export function MessageBubble({ message }: { message: MessageProps }) {
-  const isUser = message.role === "user";
+  const isUser   = message.role === "user";
   const isSystem = message.role === "system";
+  const isEmpty  = !message.content;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
-      className={cn(
-        "flex w-full gap-4 py-4",
-        isUser ? "flex-row-reverse" : "flex-row"
-      )}
+      transition={{ duration: 0.2, ease: "easeOut" }}
+      className={cn("flex gap-3 py-2 w-full", isUser ? "flex-row-reverse" : "flex-row")}
     >
+      {/* Avatar */}
       <div
         className={cn(
-          "flex h-8 w-8 shrink-0 select-none items-center justify-center rounded-md border shadow-sm",
+          "h-7 w-7 rounded-lg shrink-0 flex items-center justify-center mt-0.5",
           isUser
-            ? "bg-primary text-primary-foreground border-primary shadow-[0_0_10px_rgba(0,194,255,0.3)]"
+            ? "bg-[#1C1C1C] border border-[#2A2A2A] text-[#8F8F8F]"
             : isSystem
-              ? "bg-[#FF4D4D]/10 border-[#FF4D4D]/20 text-[#FF4D4D]"
-              : "bg-[#0E1318] border-[#1E2A35] text-[#E8EDF2] backdrop-blur-sm"
+              ? "bg-red-500/10 border border-red-500/20 text-red-400"
+              : "bg-indigo-500/10 border border-indigo-500/20 text-indigo-400"
         )}
       >
-        {isUser ? <User size={16} /> : isSystem ? <Bot size={16} className="text-[#FF4D4D]" /> : <Bot size={16} className="text-[#00C2FF]" />}
+        {isUser ? <User size={13} /> : <Sparkles size={13} />}
       </div>
-      
-      <div
-        className={cn(
-          "flex flex-col gap-2 max-w-[80%]",
-          isUser ? "items-end" : "items-start"
-        )}
-      >
+
+      {/* Bubble */}
+      <div className={cn("flex flex-col gap-1 max-w-[82%]", isUser ? "items-end" : "items-start")}>
         <div
           className={cn(
-            "rounded-2xl px-5 py-3 text-sm leading-relaxed glass-card",
+            "rounded-xl px-4 py-2.5 text-[13.5px] leading-relaxed",
             isUser
-              ? "bg-primary/10 text-[#E8EDF2] rounded-tr-sm border-primary/20"
-              : isSystem 
-                ? "bg-[#FF4D4D]/10 text-[#E8EDF2] rounded-tl-sm border-[#FF4D4D]/20"
-                : "bg-white/[0.03] text-[#E8EDF2] rounded-tl-sm border-[#1E2A35]"
+              ? "bg-indigo-500/10 text-[#EDEDED] rounded-tr-sm border border-indigo-500/15"
+              : isSystem
+                ? "bg-red-500/5 text-[#8F8F8F] rounded-tl-sm border border-red-500/10"
+                : "bg-[#171717] text-[#EDEDED] rounded-tl-sm border border-[#262626]"
           )}
         >
-          <div className="whitespace-pre-wrap">{message.content}</div>
-          
-          {message.isStreaming && (
-            <span className="ml-1 inline-block w-1.5 h-4 bg-primary animate-pulse align-middle" />
+          {/* Thinking indicator — show when assistant message is empty (streaming about to start) */}
+          {isEmpty && !isUser ? (
+            <span className="flex items-center gap-1 h-5">
+              <span className="h-1.5 w-1.5 rounded-full bg-[#616161] dot-1" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[#616161] dot-2" />
+              <span className="h-1.5 w-1.5 rounded-full bg-[#616161] dot-3" />
+            </span>
+          ) : (
+            <div className="prose-minimal whitespace-pre-wrap">
+              {message.content}
+              {message.isStreaming && (
+                <span className="ml-0.5 inline-block w-0.5 h-4 bg-indigo-400 cursor-blink align-middle" />
+              )}
+            </div>
           )}
         </div>
-        
+
         {message.timestamp && (
-          <span className="text-xs text-muted-foreground px-1">
-            {message.timestamp}
-          </span>
+          <span className="text-[11px] text-[#616161] px-1">{message.timestamp}</span>
         )}
       </div>
     </motion.div>
