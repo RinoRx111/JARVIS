@@ -19,8 +19,16 @@ class GoogleWorkspaceService:
         Retrieves the user's active Google OAuth access token.
         If it has expired, uses the refresh token to get a new one and updates the database.
         """
-        if not user.google_refresh_token:
+        # TODO: Google login is replaced by Clerk; Google OAuth token integration is out of scope.
+        google_refresh_token = getattr(user, "google_refresh_token", None)
+        if not google_refresh_token:
             logger.warning(f"No Google refresh token found for User ID {user.id}")
+            return None
+
+        client_id = getattr(settings, "GOOGLE_CLIENT_ID", None)
+        client_secret = getattr(settings, "GOOGLE_CLIENT_SECRET", None)
+        if not client_id or not client_secret:
+            logger.warning("Google OAuth client configuration is missing.")
             return None
 
         # If we had token expiry tracking, we would compare times, 
@@ -31,9 +39,9 @@ class GoogleWorkspaceService:
                 response = await client.post(
                     self.token_url,
                     data={
-                        "client_id": settings.GOOGLE_CLIENT_ID,
-                        "client_secret": settings.GOOGLE_CLIENT_SECRET,
-                        "refresh_token": user.google_refresh_token,
+                        "client_id": client_id,
+                        "client_secret": client_secret,
+                        "refresh_token": google_refresh_token,
                         "grant_type": "refresh_token",
                     }
                 )
@@ -43,7 +51,7 @@ class GoogleWorkspaceService:
                     new_access_token = data.get("access_token")
                     
                     # Update database user details
-                    user.google_oauth_token = new_access_token
+                    setattr(user, "google_oauth_token", new_access_token)
                     db.commit()
                     db.refresh(user)
                     
@@ -51,10 +59,10 @@ class GoogleWorkspaceService:
                 else:
                     logger.error(f"Failed to refresh Google token: {response.text}")
                     # If refresh fails, fall back to current active token
-                    return user.google_oauth_token
+                    return getattr(user, "google_oauth_token", None)
         except Exception as e:
             logger.error(f"Token refresh request exception: {e}")
-            return user.google_oauth_token
+            return getattr(user, "google_oauth_token", None)
 
     async def fetch_gmail_emails(self, user: User, db: Session, limit: int = 5) -> List[Dict[str, Any]]:
         """List incoming emails from the user's Gmail inbox."""

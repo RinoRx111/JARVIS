@@ -7,12 +7,6 @@ from app.models.user import Role
 class UserBase(BaseModel):
     email: EmailStr
 
-class UserCreate(UserBase):
-    password: str
-
-class UserLogin(UserBase):
-    password: str
-
 class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
@@ -44,7 +38,6 @@ class UserResponse(UserBase):
     has_discord_token: bool = False
     has_jira_token: bool = False
     has_trello_token: bool = False
-    has_google_token: bool = False
 
 class UserPreferencesUpdate(BaseModel):
     full_name: Optional[str] = None
@@ -58,19 +51,3 @@ class UserPreferencesUpdate(BaseModel):
     ollama_model: Optional[str] = None
     github_token: Optional[str] = None
     linkedin_token: Optional[str] = None
-
-class Token(BaseModel):
-    access_token: str
-    refresh_token: str
-    token_type: str = "bearer"
-
-class TokenPayload(BaseModel):
-    sub: Optional[str] = None
-    exp: Optional[float] = None
-    type: Optional[str] = None
-
-class OAuthLoginRequest(BaseModel):
-    code: str
-
-class RefreshRequest(BaseModel):
-    refresh_token: str

@@ -54,7 +54,9 @@ async def get_calendar_events(
 ):
     """Retrieves upcoming calendar items from Google Calendar or returns dynamic mock schedule entries."""
     try:
-        if current_user.google_refresh_token:
+        # TODO: Guarded references as Google OAuth is out of scope.
+        google_refresh_token = getattr(current_user, "google_refresh_token", None)
+        if google_refresh_token:
             events = await google_workspace_service.fetch_calendar_events(current_user, db, limit=10)
             if events:
                 return events
@@ -71,7 +73,9 @@ async def create_calendar_event(
 ):
     """Saves calendar events to Google Calendar API or simulates creation on unlinked clients."""
     try:
-        if current_user.google_refresh_token:
+        # TODO: Guarded references as Google OAuth is out of scope.
+        google_refresh_token = getattr(current_user, "google_refresh_token", None)
+        if google_refresh_token:
             event_id = await google_workspace_service.create_calendar_event(
                 user=current_user,
                 db=db,

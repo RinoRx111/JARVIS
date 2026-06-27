@@ -12,17 +12,19 @@ from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
-# Helper to verify paths (Allows absolute paths for full desktop/host access)
+# Helper to verify paths (Must reside within WORKSPACE_DIR)
 def _get_safe_path(filepath: str) -> str:
     from pathlib import Path
+    base_dir = Path(settings.WORKSPACE_DIR).resolve()
     filepath_expanded = os.path.expanduser(filepath)
     path = Path(filepath_expanded)
     if path.is_absolute():
-        return str(path.resolve())
-    
-    # Fallback: resolve relative to workspace directory
-    base_dir = Path(settings.WORKSPACE_DIR).resolve()
-    target_path = Path(base_dir / filepath_expanded).resolve()
+        target_path = path.resolve()
+    else:
+        target_path = Path(base_dir / filepath_expanded).resolve()
+        
+    if not target_path.is_relative_to(base_dir):
+        raise ValueError("Access denied: path escapes workspace directory.")
     return str(target_path)
 
 # --- AUTOMATION TOOLS ---

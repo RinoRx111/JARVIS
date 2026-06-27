@@ -48,6 +48,10 @@ class ConnectionManager:
 
     async def wait_for_tool_approval(self, user_id: int, tool_call_id: str, tool_name: str, code: str) -> bool:
         """Sends an approval request to the client and halts tool execution until user response is received."""
+        if user_id not in self.active_connections or not self.active_connections[user_id]:
+            logger.warning(f"No active WebSocket connections for user {user_id}. Tool approval denied automatically.")
+            return False
+
         loop = asyncio.get_event_loop()
         fut = loop.create_future()
         self.register_pending_approval(tool_call_id, fut)

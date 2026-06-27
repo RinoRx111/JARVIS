@@ -6,6 +6,32 @@ It features a stunning holographic, glassmorphic dark-mode web console built in 
 
 ---
 
+## 🌟 Current Progress & Completed Phases
+
+The following core roadmap milestones and upgrades have been successfully completed:
+
+### 🔴 Phase 1: Critical Stability & Core Integrations
+* **LangGraph Recursion Safeguards**: Integrated retry limits, loop detection, explicit `END` node routing, and 120-second execution timeouts to prevent infinite loops.
+* **Non-Blocking Interrupt System**: Implemented clean cancel events for the agent execution stream without force-terminating the WebSocket connection.
+* **Persistent Vector Store**: Integrated local persistent ChromaDB vector store directory, replacing mock client fallbacks.
+* **Redis + Celery Tasks**: Structured broker queues for background processes with fallback modes to handle single-process constraints.
+* **Docker Sandboxed Executions**: Implemented dockerized shell environments for running generated code scripts with secure confirmation prompts.
+* **Detailed Audit Logger**: Configured full logs for sub-routines tracking input arguments, execution statuses, response content, and error traceback details.
+* **External APIs**: Integrated Tavily Web Search and Google OAuth2 consent loops (access/refresh token flows for Gmail & Google Calendar services).
+
+### 🟠 Phase 2: Architecture & Codebase Cleanup
+* **Zustand & Service Refactoring**: Extracted monolithic client-side logic into standalone modules (`WebSocketService`, `VoiceManager`, `ToolManager`).
+* **SQLModel Query Modernization**: Replaced legacy sqlalchemy query strings with clean, type-safe `Session.exec()` executions.
+* **Time & Identity Standards**: Migrated all database timestamps to timezone-aware UTC objects (`datetime.now(UTC)`) and refactored client side identifiers to `crypto.randomUUID()`.
+* **Event-Driven Streaming**: Standardized backend-to-frontend communications via structured JSON events (`on_tool_start`, `on_tool_end`, `on_chat_model_stream`).
+
+### 🎨 Phase 13–15: Design, Analytics & Security Hardening
+* **Premium Holographic UI**: Implemented dark-mode glassmorphic interfaces with custom visual styles and dynamic Voice Orb CSS micro-animations.
+* **Key Encryption**: Added high-strength cryptography for client credentials, encrypting Groq, Google, and GitHub integration tokens before storing them in `jarvis.db`.
+* **Network & Wrapper Hardening**: Restrained uvicorn binding strictly to `127.0.0.1` locally, re-enabled Chromium same-origin security boundaries (`webSecurity: true`), and migrated WebSocket handshakes from URL query parameters to secure JSON payload handshakes.
+
+---
+
 ## 🧭 Documentation Tour
 
 For detailed deep-dives into specific areas of the JARVIS environment, please check out:
@@ -89,3 +115,7 @@ python -m pytest
 * **Electron CSP Boundaries**: Re-enabled same-origin policy (`webSecurity: true`) in Electron wrappers. The frontend has strict Content Security Policy (`CSP`) `<meta>` tags to allow scripts only from trusted sources.
 * **WebSocket Handshake Auth**: Real-time WebSocket connection URLs no longer expose JWT tokens in query logs; authentication is verified securely through a JSON payload sent immediately upon connection open.
 * **Local Binder restriction**: The backend `uvicorn` server binds strictly to `127.0.0.1` locally, preventing external networks from accessing your private API gateway.
+* **Code Execution Sandbox Limitation**: Python code sandbox executions run on the host system without process-level container isolation. To mitigate this risk:
+  * All agent-initiated code execution tools are gated behind an interactive human-approval prompt in the client UI.
+  * If a request is received from a context with no active WebSocket session (e.g., direct REST API calls), the request is aborted immediately with a denial status.
+  * *Hardening Roadmap*: Real process isolation (such as executing code in a restricted container or a resource-limited user profile) is planned for future releases.

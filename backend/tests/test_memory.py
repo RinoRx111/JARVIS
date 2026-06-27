@@ -2,16 +2,9 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 from app.models.user import User, Role
-from app.core.security import get_password_hash
 from app.services.memory import memory_service
 
 def test_long_term_memory_flow(client: TestClient, session: Session):
-    # Setup test user
-    hashed = get_password_hash("pass123")
-    user1 = User(email="user1@example.com", hashed_password=hashed, is_active=True, role=Role.USER)
-    session.add(user1)
-    session.commit()
-    session.refresh(user1)
 
     # Add memory for the default user
     add_res = client.post(

@@ -8,20 +8,22 @@ import { AuthOverlay } from '../auth/AuthOverlay';
 import { wsService } from '@/services/websocket';
 import { useJarvisStore } from '@/hooks/useJarvisStore';
 
+import { useAuth } from '@clerk/nextjs';
+
 interface AppLayoutProps {
   children: React.ReactNode;
 }
 
 export function AppLayout({ children }: AppLayoutProps) {
-  const token = useJarvisStore((state) => state.token);
+  const { isSignedIn, isLoaded } = useAuth();
 
   useEffect(() => {
-    if (token) {
+    if (isLoaded && isSignedIn) {
       wsService.init();
-    } else {
+    } else if (isLoaded && !isSignedIn) {
       wsService.close();
     }
-  }, [token]);
+  }, [isSignedIn, isLoaded]);
 
   return (
     <>

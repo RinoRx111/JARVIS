@@ -10,21 +10,27 @@ logger = logging.getLogger(__name__)
 def set_system_volume_tool(level: int) -> str:
     """
     Sets the Windows system volume to a specific level (0 to 100).
+    The level parameter must be an integer between 0 and 100.
+    Example: level=50 sets volume to 50%.
     """
     try:
+        # Coerce string to int — LLMs sometimes pass "50" instead of 50
+        level = int(level)
         level = max(0, min(100, level))
         from ctypes import cast, POINTER
         from comtypes import CLSCTX_ALL
         from pycaw.pycaw import AudioUtilities, IAudioEndpointVolume
-        
+
         devices = AudioUtilities.GetSpeakers()
         interface = devices.Activate(
             IAudioEndpointVolume._iid_, CLSCTX_ALL, None)
         volume = cast(interface, POINTER(IAudioEndpointVolume))
-        
+
         # Scalar volume takes a float from 0.0 to 1.0
         volume.SetMasterVolumeLevelScalar(level / 100.0, None)
         return f"System volume successfully set to {level}%."
+    except ValueError as e:
+        return f"Error: 'level' must be a number between 0 and 100, got: {level!r}"
     except Exception as e:
         logger.error(f"Failed to set volume: {e}")
         return f"Error setting volume: {e}"

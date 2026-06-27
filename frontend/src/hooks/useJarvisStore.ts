@@ -70,17 +70,7 @@ export interface ScheduleSuggestion {
 }
 
 interface JarvisState {
-  // Auth
-  token: string | null;
-  user: User | null;
-  authLoading: boolean;
-  needsSetup: boolean;
-  checkSetupStatus: () => Promise<void>;
-  login: (email: string, password: string) => Promise<boolean>;
-  register: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
-  checkAuth: () => Promise<boolean>;
-  setToken: (token: string | null, refreshToken?: string | null) => void;
+
 
   // Navigation
   activeTab: 'dashboard' | 'chat' | 'agents' | 'browser' | 'gmail' | 'calendar' | 'memory' | 'settings' | 'profile' | 'analytics';
@@ -221,78 +211,7 @@ const speakLocalTTS = (text: string, setCoreStatus?: (status: 'STANDBY' | 'THINK
 let socket: WebSocket | null = null;
 
 export const useJarvisStore = create<JarvisState>((set, get) => ({
-  // Auth initial state
-  token: 'local-bypass-token',
-  user: {
-    id: 1,
-    email: 'local_user@jarvis-local.org',
-    full_name: 'Local Master',
-    nickname: 'Master',
-    role: 'admin',
-    is_active: true
-  },
-  authLoading: false,
-  needsSetup: false,
 
-  checkSetupStatus: async () => {
-    set({ needsSetup: false });
-  },
-
-  login: async (email, password) => {
-    localStorage.setItem('jarvis_token', 'local-bypass-token');
-    set({
-      token: 'local-bypass-token',
-      user: {
-        id: 1,
-        email: 'local_user@jarvis-local.org',
-        full_name: 'Local Master',
-        nickname: 'Master',
-        role: 'admin',
-        is_active: true
-      }
-    });
-    return true;
-  },
-
-  register: async (email, password) => {
-    return true;
-  },
-
-  logout: () => {
-    localStorage.removeItem('jarvis_token');
-    localStorage.removeItem('jarvis_refresh_token');
-    set({ token: null, user: null, messages: [], activeConversationId: null });
-  },
-
-  setToken: (token, refreshToken) => {
-    if (token) {
-      localStorage.setItem('jarvis_token', token);
-      set({ token });
-    } else {
-      localStorage.removeItem('jarvis_token');
-      localStorage.removeItem('jarvis_refresh_token');
-      set({ token: null });
-    }
-    if (refreshToken) {
-      localStorage.setItem('jarvis_refresh_token', refreshToken);
-    }
-  },
-
-  checkAuth: async () => {
-    set({
-      token: 'local-bypass-token',
-      user: {
-        id: 1,
-        email: 'local_user@jarvis-local.org',
-        full_name: 'Local Master',
-        nickname: 'Master',
-        role: 'admin',
-        is_active: true
-      },
-      authLoading: false
-    });
-    return true;
-  },
 
   // Navigation state
   activeTab: 'dashboard',

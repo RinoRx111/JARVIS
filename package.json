@@ -14,5 +14,33 @@
   "devDependencies": {
     "electron": "^30.0.0",
     "electron-builder": "^26.15.0"
+  },
+  "build": {
+    "appId": "com.jarvis.os",
+    "files": [
+      "main.js",
+      "package.json",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "backend/dist",
+        "to": "backend/dist",
+        "filter": [
+          "**/*"
+        ]
+      },
+      {
+        "from": "frontend",
+        "to": "frontend",
+        "filter": [
+          ".next/**/*",
+          "node_modules/**/*",
+          "package.json",
+          "public/**/*",
+          "next.config.mjs"
+        ]
+      }
+    ]
   }
 }

@@ -30,6 +30,8 @@ const navItems = [
   { name: 'Analytics',   icon: Activity,      href: '/analytics' },
 ];
 
+import { UserButton } from '@clerk/nextjs';
+
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const pathname = usePathname();
@@ -136,7 +138,7 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="p-2 border-t border-[#1F1F1F]">
+      <div className="p-2 border-t border-[#1F1F1F] flex flex-col gap-2">
         <Link href="/settings">
           <div
             className={cn(
@@ -163,6 +165,14 @@ export function Sidebar() {
             </AnimatePresence>
           </div>
         </Link>
+        <div className={cn("flex items-center px-2.5 py-2 transition-colors", collapsed ? "justify-center" : "justify-between border-t border-[#1F1F1F]/40 pt-2")}>
+          <UserButton afterSignOutUrl="/" showName={!collapsed} appearance={{
+            elements: {
+              userButtonAvatarBox: "h-6 w-6",
+              userButtonOuterIdentifier: "text-xs text-[#EDEDED] font-medium"
+            }
+          }} />
+        </div>
       </div>
     </motion.aside>
   );

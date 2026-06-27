@@ -59,7 +59,9 @@ async def get_gmail_inbox(
 ):
     """Fetches incoming emails from Google Inbox or returns interactive mock emails if Google accounts are unlinked."""
     try:
-        if current_user.google_refresh_token:
+        # TODO: Guarded references as Google OAuth is out of scope.
+        google_refresh_token = getattr(current_user, "google_refresh_token", None)
+        if google_refresh_token:
             emails = await google_workspace_service.fetch_gmail_emails(current_user, db, limit=10)
             if emails:
                 return emails
@@ -76,7 +78,9 @@ async def send_gmail_email(
 ):
     """Sends an email using Google OAuth or simulates a successful transfer if unlinked."""
     try:
-        if current_user.google_refresh_token:
+        # TODO: Guarded references as Google OAuth is out of scope.
+        google_refresh_token = getattr(current_user, "google_refresh_token", None)
+        if google_refresh_token:
             success = await google_workspace_service.send_gmail_email(
                 current_user, db, to=payload.to, subject=payload.subject, body=payload.body
             )

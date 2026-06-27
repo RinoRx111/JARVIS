@@ -18,17 +18,13 @@ class User(SQLModel, table=True):
 
     id: Optional[int] = Field(default=None, primary_key=True)
     email: str = Field(index=True, nullable=False, unique=True)
-    hashed_password: Optional[str] = Field(default=None)
+    clerk_user_id: str = Field(index=True, unique=True, nullable=False)
     is_active: bool = Field(default=True)
     role: str = Field(default="user")
 
     # Profile Details
     full_name: Optional[str] = Field(default=None)
     nickname: Optional[str] = Field(default=None)
-
-    # OAuth credentials
-    google_oauth_token: Optional[str] = Field(default=None)
-    google_refresh_token: Optional[str] = Field(default=None)
     
     github_token: Optional[str] = Field(default=None)
     notion_token: Optional[str] = Field(default=None)

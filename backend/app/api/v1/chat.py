@@ -19,7 +19,6 @@ from app.services.agent_orchestrator import agent_graph
 
 logger = logging.getLogger(__name__)
 
-from app.core.security import decode_token
 
 router = APIRouter(prefix="/chat", tags=["AI Chat"])
 
@@ -236,29 +235,28 @@ async def send_chat_message(
 from app.services.websocket_manager import manager
 
 @router.websocket("/ws")
-async def websocket_chat_endpoint(websocket: WebSocket, db: Session = Depends(get_db)):
+async def websocket_chat_endpoint(websocket: WebSocket):
     """Establish real-time communication for bidirectional AI streams."""
     await websocket.accept()
     
+    from sqlmodel import Session
+    from app.core.database import engine
+    from app.core.clerk_auth import verify_clerk_token, get_or_create_clerk_user
+    
     try:
-        # Wait for the first message (optionally contains auth token)
+        # Wait for the first message (contains auth token)
         auth_data = await websocket.receive_json()
-        
-        # Local desktop mode fallback: always associate with local master user
-        user = db.exec(select(User)).first()
-        if not user:
-            from app.core.security import get_password_hash
-            user = User(
-                email="local_user@jarvis.local",
-                hashed_password=get_password_hash("jarvis_local_2024"),
-                full_name="Local Master",
-                nickname="Master",
-                is_active=True,
-                role="admin"
-            )
-            db.add(user)
-            db.commit()
-            db.refresh(user)
+        token = auth_data.get("token")
+        if not token:
+            raise ValueError("Missing authentication token")
+            
+        with Session(engine) as db:
+            clerk_data = verify_clerk_token(token)
+            clerk_user_id = clerk_data.get("sub")
+            if not clerk_user_id:
+                raise ValueError("Invalid token: sub missing")
+            user = get_or_create_clerk_user(db, clerk_user_id)
+            user_id = user.id
             
     except Exception as e:
         logger.error(f"WebSocket handshake/auth error: {e}")
@@ -268,7 +266,7 @@ async def websocket_chat_endpoint(websocket: WebSocket, db: Session = Depends(ge
             pass
         return
 
-    await manager.connect(user.id, websocket, accept_first=False)
+    await manager.connect(user_id, websocket, accept_first=False)
 
     import asyncio
     current_task = None
@@ -336,7 +334,7 @@ async def websocket_chat_endpoint(websocket: WebSocket, db: Session = Depends(ge
                 # Run the conversational pipeline with the transcribed text
                 if current_task and not current_task.done():
                     current_task.cancel()
-                current_task = asyncio.create_task(_ws_process_response_with_timeout(websocket, transcription, user, db, None))
+                current_task = asyncio.create_task(_ws_process_response_with_timeout(websocket, transcription, user_id, None))
             
             elif "text" in data:
                 raw_text = data["text"]
@@ -351,23 +349,31 @@ async def websocket_chat_endpoint(websocket: WebSocket, db: Session = Depends(ge
                 
                 if current_task and not current_task.done():
                     current_task.cancel()
-                current_task = asyncio.create_task(_ws_process_response_with_timeout(websocket, text_input, user, db, conversation_id))
+                current_task = asyncio.create_task(_ws_process_response_with_timeout(websocket, text_input, user_id, conversation_id))
                 
     except WebSocketDisconnect:
-        manager.disconnect(user.id, websocket)
+        manager.disconnect(user_id, websocket)
     except Exception as e:
         logger.error(f"WebSocket runtime exception: {e}")
-        manager.disconnect(user.id, websocket)
+        manager.disconnect(user_id, websocket)
 
-async def _ws_process_response_with_timeout(websocket: WebSocket, prompt: str, user: User, db: Session, conversation_id: Optional[int] = None) -> None:
+async def _ws_process_response_with_timeout(websocket: WebSocket, prompt: str, user_id: int, conversation_id: Optional[int] = None) -> None:
     import asyncio
+    from sqlmodel import Session
+    from app.core.database import engine
     try:
-        await asyncio.wait_for(_ws_process_response(websocket, prompt, user, db, conversation_id), timeout=120.0)
+        with Session(engine) as db:
+            user = db.get(User, user_id)
+            if not user:
+                logger.error(f"User {user_id} not found in database session")
+                await websocket.send_json({"error": "User profile not found."})
+                return
+            await asyncio.wait_for(_ws_process_response(websocket, prompt, user, db, conversation_id), timeout=120.0)
     except asyncio.TimeoutError:
-        logger.warning(f"Agent execution timed out for user {user.id}")
+        logger.warning(f"Agent execution timed out for user {user_id}")
         await websocket.send_json({"error": "Agent execution timed out after 120 seconds."})
     except asyncio.CancelledError:
-        logger.info(f"Agent execution was cancelled by user {user.id}.")
+        logger.info(f"Agent execution was cancelled by user {user_id}.")
         # Task was cancelled explicitly, gracefully stop without error to frontend
 
 async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db: Session, conversation_id: Optional[int] = None) -> None:
@@ -517,32 +523,21 @@ async def _ws_process_response(websocket: WebSocket, prompt: str, user: User, db
     voice_url = await synthesize_voice_elevenlabs(agent_reply)
 
     # Save intermediate tool execution steps
-    for m in accumulated_messages:
+    for idx, m in enumerate(accumulated_messages):
         from langchain_core.messages import ToolMessage
         role = "assistant" if isinstance(m, AIMessage) else "tool" if isinstance(m, ToolMessage) else "system"
         content = str(m.content)
         if not content and hasattr(m, "tool_calls") and m.tool_calls:
             content = f"[Invoked Tools: {', '.join([t['name'] for t in m.tool_calls])}]"
             
-        db.add(Message(conversation_id=conversation.id, role=role, content=content))
+        v_url = voice_url if (idx == len(accumulated_messages) - 1 and isinstance(m, AIMessage)) else None
+        db.add(Message(conversation_id=conversation.id, role=role, content=content, voice_url=v_url))
 
-    # Save final response with voice_url attached
+    # Save final response with voice_url attached if the last message wasn't saved in the loop
     if not accumulated_messages or not isinstance(accumulated_messages[-1], AIMessage):
         db.add(Message(conversation_id=conversation.id, role="assistant", content=agent_reply, voice_url=voice_url))
-    else:
-        # If the last message was already added in the loop above, we shouldn't add it again.
-        # But wait, accumulated_messages[-1] IS the final assistant message! We just added it without voice_url.
-        # Let's commit and then update the last message.
-        pass
-        
+
     db.commit()
-    
-    # Update voice_url on the very last message in the conversation if it exists
-    if voice_url:
-        last_msg = db.exec(select(Message).where(Message.conversation_id == conversation.id).order_by(Message.id.desc())).first()
-        if last_msg:
-            last_msg.voice_url = voice_url
-            db.commit()
 
     # Send final completed packet
     await websocket.send_json({

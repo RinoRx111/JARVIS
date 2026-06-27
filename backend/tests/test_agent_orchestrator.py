@@ -12,8 +12,7 @@ from app.models.user import User
 
 @pytest.mark.asyncio
 async def test_intent_classification_node(session):
-    # Setup mock user in test db
-    user = User(email="test_orchestrator@jarvis.os", is_active=True, hashed_password="mock")
+    user = User(email="test_orchestrator@jarvis.os", is_active=True, clerk_user_id="clerk_orch_test")
     session.add(user)
     session.commit()
     session.refresh(user)

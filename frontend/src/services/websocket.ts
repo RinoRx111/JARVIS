@@ -7,7 +7,7 @@ class WebSocketService {
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
 
-  init() {
+  async init() {
     if (this.socket && this.socket.readyState === WebSocket.OPEN) return;
     
     if (this.socket) {
@@ -22,12 +22,25 @@ class WebSocketService {
     }
     const wsProtocol = apiBase.startsWith('https') ? 'wss:' : 'ws:';
     const wsHost = apiBase.replace(/^https?:\/\//, '');
-    const token = useJarvisStore.getState().token;
+    
+    const clerk = (window as any).Clerk;
+    if (!clerk) {
+      console.warn("Clerk is not initialized yet.");
+      return;
+    }
+    
+    let token: string | null = null;
+    try {
+      token = await clerk.session?.getToken();
+    } catch (err) {
+      console.error("Failed to get Clerk token for WebSocket connection:", err);
+    }
+    
     if (!token) return; // Don't connect if not authenticated
     const wsUrl = `${wsProtocol}//${wsHost}/api/v1/chat/ws`;
     
     this.socket = new WebSocket(wsUrl);
-
+ 
     this.socket.onopen = () => {
       if (this.socket) {
         this.socket.send(JSON.stringify({ token }));

@@ -96,9 +96,13 @@ def read_workspace_file(
         with open(safe_path, "r", encoding="utf-8", errors="ignore") as f:
             content = f.read()
         return {"filepath": filepath, "content": content}
+    except ValueError as ve:
+        raise HTTPException(status_code=403, detail=str(ve))
     except PermissionError as pe:
         raise HTTPException(status_code=403, detail=str(pe))
     except Exception as e:
+        if isinstance(e, HTTPException):
+            raise e
         raise HTTPException(status_code=500, detail=str(e))
 
 @router.get("/{file_id}/status", response_model=FileMetadata)

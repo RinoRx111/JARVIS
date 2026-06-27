@@ -15,7 +15,9 @@ class Settings(BaseSettings):
     DEBUG: bool = True
     PROJECT_NAME: str = "JARVIS - AI Operating System"
     # --- SECURITY ---
-    SECRET_KEY: str = "generate_a_secure_jwt_secret_key_here_minimum_32_chars"
+    CLERK_JWKS_URL: Optional[str] = None
+    CLERK_ISSUER: Optional[str] = None
+    CLERK_SECRET_KEY: Optional[str] = None
     ENCRYPTION_KEY: Optional[str] = None
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 1440
 
@@ -44,10 +46,7 @@ class Settings(BaseSettings):
     ELEVENLABS_API_KEY: Optional[str] = None
     ELEVENLABS_VOICE_ID: str = "21m00Tcm4TlvDq8ikWAM"
 
-    # --- GOOGLE OAUTH2 ---
-    GOOGLE_CLIENT_ID: Optional[str] = None
-    GOOGLE_CLIENT_SECRET: Optional[str] = None
-    GOOGLE_REDIRECT_URI: str = "http://localhost:3000/auth/callback"
+
 
     # --- INTEGRATION TOKENS ---
     GITHUB_TOKEN: Optional[str] = None
@@ -74,7 +73,7 @@ class Settings(BaseSettings):
     def sanitize_placeholders(self) -> "Settings":
         fields_to_sanitize = [
             "OPENAI_API_KEY", "GEMINI_API_KEY", "ANTHROPIC_API_KEY", "GROQ_API_KEY",
-            "ELEVENLABS_API_KEY", "GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET", 
+            "ELEVENLABS_API_KEY", "CLERK_SECRET_KEY", 
             "GITHUB_TOKEN", "WEATHER_API_KEY", "NEWS_API_KEY"
         ]
         for field in fields_to_sanitize:
@@ -90,6 +89,8 @@ class Settings(BaseSettings):
                 with open(resolved_path, "r") as f:
                     key = f.read().strip()
                     if key and not key.startswith("PASTE_YOUR"):
+                        import logging
+                        logging.getLogger("app.core.config").warning(f"GROQ_API_KEY is being overridden by file: {resolved_path}")
                         self.GROQ_API_KEY = key
         # Ensure WORKSPACE_DIR is absolute so subprocess paths resolve correctly
         if self.WORKSPACE_DIR:

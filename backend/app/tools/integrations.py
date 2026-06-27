@@ -3,6 +3,7 @@ from typing import Optional
 from langchain_core.tools import tool
 from sqlmodel import Session
 from app.models.user import User
+from app.core.crypto import decrypt_key
 
 logger = logging.getLogger(__name__)
 
@@ -10,7 +11,8 @@ logger = logging.getLogger(__name__)
 
 async def invoke_github_list_repos(user: User, db: Session) -> str:
     from app.core.config import settings
-    token = settings.GITHUB_TOKEN or user.github_token
+    user_token = decrypt_key(user.github_token) if user.github_token else None
+    token = settings.GITHUB_TOKEN or user_token
     if not token or token.startswith("your_"):
         return "GitHub Repositories (Mock Mode):\n- aditi/jarvis-core\n- aditi/nextjs-portfolio\n- aditi/python-scripts"
     
@@ -34,7 +36,8 @@ async def invoke_github_list_repos(user: User, db: Session) -> str:
 
 async def invoke_github_list_issues(user: User, db: Session, repo_name: str) -> str:
     from app.core.config import settings
-    token = settings.GITHUB_TOKEN or user.github_token
+    user_token = decrypt_key(user.github_token) if user.github_token else None
+    token = settings.GITHUB_TOKEN or user_token
     if not token or token.startswith("your_"):
         return f"Open Issues in {repo_name} (Mock Mode):\n- Issue #12: Fix OAuth token refresh bug\n- Issue #14: Upgrade to React 19"
     
@@ -58,7 +61,8 @@ async def invoke_github_list_issues(user: User, db: Session, repo_name: str) -> 
 
 async def invoke_github_create_issue(user: User, db: Session, repo_name: str, title: str, body: str) -> str:
     from app.core.config import settings
-    token = settings.GITHUB_TOKEN or user.github_token
+    user_token = decrypt_key(user.github_token) if user.github_token else None
+    token = settings.GITHUB_TOKEN or user_token
     if not token or token.startswith("your_"):
         return f"Simulated GitHub Issue Creation in '{repo_name}':\nIssue Title: {title}\nDescription: {body}\nStatus: Success (Mock Mode)"
     
@@ -82,7 +86,8 @@ async def invoke_github_create_issue(user: User, db: Session, repo_name: str, ti
 
 async def invoke_github_create_repo(user: User, db: Session, name: str, description: str = "") -> str:
     from app.core.config import settings
-    token = settings.GITHUB_TOKEN or user.github_token
+    user_token = decrypt_key(user.github_token) if user.github_token else None
+    token = settings.GITHUB_TOKEN or user_token
     if not token or token.startswith("your_"):
         return f"Simulated GitHub Repository Creation:\nRepo Name: {name}\nDescription: {description}\nStatus: Success (Mock Mode)"
     
@@ -149,7 +154,8 @@ def linkedin_search_people_tool(query: str) -> str:
 # --- NOTION TOOLS ---
 
 async def invoke_notion_search(user: User, db: Session, query: str) -> str:
-    if not user.notion_token:
+    notion_tok = decrypt_key(user.notion_token) if user.notion_token else None
+    if not notion_tok:
         return "Error: User has not connected their Notion account."
     return f"Notion Search Results for '{query}':\n- Page: Project JARVIS Roadmap (ID: abc-123)\n- Page: Meeting Notes June (ID: def-456)"
 
