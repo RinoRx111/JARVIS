@@ -72,13 +72,11 @@ function startFrontend() {
     // In dev mode, Next.js dev server is run externally via bat/terminal
     return;
   }
-  log('Starting Next.js production server...');
-  const frontendCwd = path.join(process.resourcesPath, 'frontend');
-  const npmCmd = process.platform === 'win32' ? 'npm.cmd' : 'npm';
+  log('Starting Next.js standalone production server...');
+  const serverPath = path.join(process.resourcesPath, 'frontend', 'server.js');
   
-  frontendProcess = spawn(npmCmd, ['run', 'start'], {
-    cwd: frontendCwd,
-    shell: true,
+  frontendProcess = spawn('node', [serverPath], {
+    cwd: path.dirname(serverPath),
     windowsHide: true
   });
 

@@ -34,15 +34,10 @@
         ]
       },
       {
-        "from": "frontend",
+        "from": "frontend/.next/standalone",
         "to": "frontend",
         "filter": [
-          ".next/**/*",
-          "node_modules/**/*",
-          "package.json",
-          "public/**/*",
-          "next.config.mjs",
-          ".env.local"
+          "**/*"
         ]
       }
     ]
