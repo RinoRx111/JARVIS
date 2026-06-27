@@ -3,6 +3,7 @@
 import React from 'react';
 import { SignIn, useUser } from '@clerk/nextjs';
 import { Loader2 } from 'lucide-react';
+import { dark } from '@clerk/themes';
 
 export function AuthOverlay() {
   const { isLoaded, isSignedIn } = useUser();
@@ -41,7 +42,9 @@ export function AuthOverlay() {
         </div>
         
         <SignIn 
+          routing="hash"
           appearance={{
+            baseTheme: dark,
             variables: {
               colorPrimary: '#06b6d4',
               colorBackground: '#121212',
