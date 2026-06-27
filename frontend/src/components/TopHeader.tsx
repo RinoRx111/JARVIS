@@ -2,11 +2,15 @@
 
 import React from 'react';
 import { User, Clock } from 'lucide-react';
-import clsx from 'clsx';
+import { useUser } from '@clerk/nextjs';
 import { useJarvisStore } from '../hooks/useJarvisStore';
 
 export default function TopHeader({ timeStr }: { timeStr: string }) {
   const store = useJarvisStore();
+  const { user, isLoaded } = useUser();
+
+  const userEmail = user?.primaryEmailAddress?.emailAddress || "user@jarvis.os";
+  const username = userEmail.split('@')[0];
 
   return (
     <header className="border-b border-cyan-500/15 bg-slate-950/80 backdrop-filter backdrop-blur-md px-6 py-3.5 flex justify-between items-center z-40 relative">
@@ -45,9 +49,11 @@ export default function TopHeader({ timeStr }: { timeStr: string }) {
       <div className="flex items-center space-x-3">
         <div className="flex items-center space-x-1">
           <User className="w-3.5 h-3.5 text-cyan-400" />
-          <span className="text-[10px] text-cyan-200 select-all uppercase tracking-wider">{store.user?.email.split('@')[0]}</span>
+          <span className="text-[10px] text-cyan-200 select-all uppercase tracking-wider">
+            {isLoaded && user ? username : "USER"}
+          </span>
           <span className="text-[8px] bg-cyan-950 border border-cyan-500/30 text-cyan-400 px-1 py-0.2 rounded font-bold uppercase tracking-widest">
-            {store.user?.role}
+            {isLoaded && user ? "ADMIN" : "GUEST"}
           </span>
         </div>
       </div>

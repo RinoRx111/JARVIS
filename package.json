@@ -4,7 +4,10 @@
   "description": "JARVIS AI Operating System Desktop App",
   "main": "main.js",
   "scripts": {
-    "start": "electron ."
+    "start": "electron .",
+    "build:frontend": "cd frontend && npm run build",
+    "build:backend": "cd backend && python -m PyInstaller --name jarvis-backend --onefile --windowed app/main.py",
+    "package": "npm run build:frontend && npm run build:backend && electron-builder --win nsis"
   },
   "author": "",
   "license": "ISC",

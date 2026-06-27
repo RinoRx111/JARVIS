@@ -9,6 +9,7 @@ import { MessageBubble } from './MessageBubble';
 import { ToolExecutionNode } from './ToolExecutionNode';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useUser } from '@clerk/nextjs';
 
 const QUICK_PROMPTS = [
   "Summarize my recent tasks",
@@ -18,7 +19,7 @@ const QUICK_PROMPTS = [
 ];
 
 export function ChatWindow() {
-  const token              = useJarvisStore((s) => s.token);
+  const { isSignedIn } = useUser();
   const messages           = useJarvisStore((s) => s.messages);
   const alerts             = useJarvisStore((s) => s.alerts);
   const currentPlan        = useJarvisStore((s) => s.currentPlan);
@@ -66,8 +67,8 @@ export function ChatWindow() {
 
   /* ---------- init ---------- */
   useEffect(() => {
-    if (token) { fetchConversations(); fetchChatHistory(); }
-  }, [token, fetchConversations, fetchChatHistory]);
+    if (isSignedIn) { fetchConversations(); fetchChatHistory(); }
+  }, [isSignedIn, fetchConversations, fetchChatHistory]);
 
   /* ---------- cleanup media on unmount ---------- */
   useEffect(() => {
