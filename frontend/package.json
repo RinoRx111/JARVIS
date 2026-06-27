@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 3000",
-    "build": "next build && powershell -Command \"Copy-Item -Path public -Destination .next/standalone/public -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item -Path .next/static -Destination .next/standalone/.next/static -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item -Path .env.local -Destination .next/standalone/.env.local -Force -ErrorAction SilentlyContinue\"",
+    "build": "next build && powershell -Command \"Copy-Item -Path public -Destination .next/standalone/public -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item -Path .next/static -Destination .next/standalone/.next/static -Recurse -Force -ErrorAction SilentlyContinue; Copy-Item -Path .env.local -Destination .next/standalone/.env.local -Force -ErrorAction SilentlyContinue; Copy-Item -Path node_modules/next -Destination .next/standalone/node_modules/next -Recurse -Force -ErrorAction SilentlyContinue\"",
     "start": "node .next/standalone/server.js",
     "lint": "next lint",
     "test": "vitest run"
